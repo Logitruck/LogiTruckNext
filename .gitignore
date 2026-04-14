@@ -35,6 +35,10 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+scripts/serviceAccountKey.json
+scripts/serviceAccountKey.json
+.env
+.env.*
 
 # generated native folders
 /ios

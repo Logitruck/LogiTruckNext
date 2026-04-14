@@ -12,7 +12,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.LogiTruckNext"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,6 +26,18 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+   "plugins": [
+  "expo-web-browser",
+  "expo-image",
+  "@react-native-community/datetimepicker",
+  [
+    "expo-image-picker",
+    {
+      "cameraPermission": "We need access to your camera to capture tickets",
+      "photosPermission": "We need access to your photos to upload tickets"
     }
+  ]
+]
   }
 }

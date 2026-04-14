@@ -1,0 +1,201 @@
+import { StyleSheet } from 'react-native';
+
+export const dynamicStyles = (theme: any, appearance: 'light' | 'dark') => {
+  const colors = theme.colors[appearance];
+
+  return StyleSheet.create({
+    scrollContainer: {
+      padding: 16,
+      paddingBottom: 40,
+      backgroundColor: colors.primaryBackground,
+    },
+    formContainer: {
+      borderRadius: 16,
+      padding: 16,
+      backgroundColor: colors.secondaryBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    title: {
+      fontSize: 20,
+      fontWeight: '700',
+      color: colors.primaryText,
+      marginBottom: 16,
+    },
+    sectionTitle: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.primaryText,
+      marginTop: 12,
+      marginBottom: 12,
+    },
+    summaryBox: {
+      borderRadius: 12,
+      padding: 12,
+      backgroundColor: colors.primaryBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 12,
+    },
+    summaryText: {
+      fontSize: 14,
+      color: colors.primaryText,
+      marginBottom: 6,
+    },
+    infoText: {
+      fontSize: 14,
+      color: colors.primaryText,
+      marginBottom: 10,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.primaryText,
+      marginBottom: 8,
+      marginTop: 10,
+    },
+    input: {
+      minHeight: 48,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      fontSize: 15,
+      color: colors.primaryText,
+      backgroundColor: colors.primaryBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    dateInputContainer: {
+      minHeight: 48,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      justifyContent: 'center',
+      backgroundColor: colors.primaryBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    dateInputText: {
+      fontSize: 15,
+      color: colors.primaryText,
+    },
+    textArea: {
+      minHeight: 100,
+      textAlignVertical: 'top',
+    },
+    totalPriceText: {
+      fontSize: 16,
+      fontWeight: '700',
+      color: colors.primaryText,
+      marginTop: 18,
+      marginBottom: 10,
+    },
+    validationText: {
+      fontSize: 13,
+      color: colors.secondaryText,
+      marginBottom: 14,
+    },
+    loader: {
+      marginTop: 8,
+    },
+    button: {
+      minHeight: 48,
+      borderRadius: 12,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primaryForeground,
+    },
+    buttonDisabled: {
+      opacity: 0.5,
+    },
+    buttonText: {
+      color: colors.buttonText,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    routeBox: {
+      marginTop: 12,
+      padding: 12,
+      borderRadius: 12,
+      backgroundColor: colors.primaryBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    routePreparedBox: {
+      marginTop: 10,
+      padding: 10,
+      borderRadius: 10,
+      backgroundColor: colors.secondaryBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    routeTitle: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.primaryText,
+      marginBottom: 8,
+    },
+    routeMeta: {
+      fontSize: 12,
+      color: colors.secondaryText,
+      marginBottom: 4,
+    },
+    routeActionsRow: {
+      flexDirection: 'row',
+      marginTop: 12,
+      gap: 8,
+    },
+    routePrimaryButton: {
+      flex: 1,
+      minHeight: 42,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.primaryForeground,
+    },
+    routePrimaryButtonText: {
+      color: colors.buttonText,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    routeSecondaryButton: {
+      flex: 1,
+      minHeight: 42,
+      borderRadius: 10,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.secondaryBackground,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    routeSecondaryButtonText: {
+      color: colors.primaryText,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      justifyContent: 'flex-end',
+    },
+    modalCard: {
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 16,
+      backgroundColor: colors.secondaryBackground,
+      borderTopWidth: 1,
+      borderColor: colors.border,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: colors.primaryText,
+      marginBottom: 12,
+    },
+    modalActionsRow: {
+      flexDirection: 'row',
+      marginTop: 16,
+      gap: 8,
+      marginBottom: 8,
+    },
+  });
+};
