@@ -36,10 +36,10 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 scripts/serviceAccountKey.json
-scripts/serviceAccountKey.json
 .env
 .env.*
+ios/Pods/
+android/.gradle/
+android/app/build/
+ios/build/
 
-# generated native folders
-/ios
-/android
