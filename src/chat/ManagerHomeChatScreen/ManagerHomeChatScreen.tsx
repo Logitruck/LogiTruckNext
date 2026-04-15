@@ -45,7 +45,7 @@ const ManagerHomeChatScreen = ({
   const { participants, loading: participantsLoading } =
     useManagerChatParticipants();
   const { contextItems, loading: contextLoading } = useManagerContextItems();
-console.log('contextItems',contextItems)
+// console.log('contextItems',contextItems)
 useEffect(() => {
   
   console.log('MOUNT ManagerHomeChatScreen');

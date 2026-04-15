@@ -13,31 +13,48 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.LogiTruckNext"
+      "bundleIdentifier": "ai.logitruck.LogiTruckNext",
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "useFrameworks": "static"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "package": "ai.logitruck.LogiTruckNext",
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-   "plugins": [
-  "expo-web-browser",
-  "expo-image",
-  "@react-native-community/datetimepicker",
-  [
-    "expo-image-picker",
-    {
-      "cameraPermission": "We need access to your camera to capture tickets",
-      "photosPermission": "We need access to your photos to upload tickets"
-    }
-  ]
-]
+    "plugins": [
+      "expo-web-browser",
+      "expo-image",
+      "@react-native-community/datetimepicker",
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "We need access to your camera to capture tickets",
+          "photosPermission": "We need access to your photos to upload tickets"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useModularHeaders": true
+          }
+        }
+      ],
+
+    ]
   }
 }

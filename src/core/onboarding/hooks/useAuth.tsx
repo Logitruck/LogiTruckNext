@@ -10,6 +10,10 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { resolveActiveVendorID } from '../utils/resolveActiveVendorID';
 import { resolveActiveRole } from '../utils/resolveActiveRole';
+import {
+  fetchAndStorePushTokenIfPossible,
+  subscribeToPushTokenRefresh,
+} from '../../notifications/pushToken';
 
 type UserDocData = {
   id: string;
@@ -47,6 +51,7 @@ type AuthContextValue = {
   availableVendorIDs: string[];
   availableRoles: string[];
   loading: boolean;
+  authResolved: boolean;
   signIn: (email: string, password: string) => Promise<any>;
   signOut: () => Promise<void>;
   setActiveVendor: (vendorID: string) => Promise<void>;
@@ -74,7 +79,7 @@ export const AuthProvider = ({ children, authManager }: Props) => {
   const [availableVendorIDs, setAvailableVendorIDs] = useState<string[]>([]);
   const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-
+  const [authResolved, setAuthResolved] = useState(false);
   const clearSession = () => {
     setUserDoc(null);
     setVendorUser(null);
@@ -162,28 +167,35 @@ export const AuthProvider = ({ children, authManager }: Props) => {
     );
   };
 
-  useEffect(() => {
-    const unsubscribe = authManager.subscribe(async (firebaseUser) => {
-      try {
-        setLoading(true);
-        setAuthUser(firebaseUser);
+useEffect(() => {
+  const unsubscribe = authManager.subscribe(async (firebaseUser) => {
+    console.log('🔥 AUTH STATE CHANGED:', firebaseUser);
 
-        if (!firebaseUser) {
-          clearSession();
-          return;
-        }
+    try {
+      setLoading(true);
+      setAuthUser(firebaseUser);
 
-        await loadUserContext(firebaseUser);
-      } catch (error) {
-        console.error('🔥 AuthProvider error:', error);
+      if (!firebaseUser) {
+        // Solo limpiar sesión, pero sin asumir aún navegación forzada
         clearSession();
-      } finally {
-        setLoading(false);
+        return;
       }
-    });
 
-    return unsubscribe;
-  }, [authManager]);
+      console.log('✅ User restored:', firebaseUser.uid);
+      await loadUserContext(firebaseUser);
+    } catch (error) {
+      console.error('🔥 AuthProvider error:', error);
+      clearSession();
+    } finally {
+      setAuthResolved(true);
+      setLoading(false);
+    }
+  });
+
+  return unsubscribe;
+}, [authManager]);
+
+  
 
   const signIn = async (email: string, password: string) => {
     return authManager.signIn(email, password);
@@ -257,12 +269,36 @@ const currentUser = useMemo(() => {
     availableVendorIDs,
     availableRoles,
     loading,
+    authResolved,
     signIn,
     signOut,
     setActiveVendor,
     setActiveRole,
     reloadSession,
   };
+
+  useEffect(() => {
+  if (!currentUser?.id) {
+    return;
+  }
+
+  let unsubscribeTokenRefresh: (() => void) | undefined;
+
+  const setupPush = async () => {
+    try {
+      await fetchAndStorePushTokenIfPossible(currentUser);
+      unsubscribeTokenRefresh = subscribeToPushTokenRefresh(currentUser.id);
+    } catch (error) {
+      console.error('🔥 Push setup error:', error);
+    }
+  };
+
+  setupPush();
+
+  return () => {
+    unsubscribeTokenRefresh?.();
+  };
+}, [currentUser?.id]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
