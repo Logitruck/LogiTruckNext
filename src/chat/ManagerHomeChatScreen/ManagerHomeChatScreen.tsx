@@ -45,7 +45,7 @@ const ManagerHomeChatScreen = ({
   const { participants, loading: participantsLoading } =
     useManagerChatParticipants();
   const { contextItems, loading: contextLoading } = useManagerContextItems();
-console.log('contextItems',contextItems)
+// console.log('contextItems',contextItems)
 useEffect(() => {
   
   console.log('MOUNT ManagerHomeChatScreen');
@@ -79,11 +79,11 @@ const colors = theme.colors[appearance];
 const renderHeaderLeft = useCallback(
   () => (
     <MaterialCommunityIcons
-      name="menu"
+      name="arrow-left"
       size={24}
       color={colors.primaryText}
       style={{ marginLeft: 16 }}
-      onPress={() => navigation.openDrawer()}
+      onPress={() => navigation.goBack()}
     />
   ),
   [colors.primaryText, navigation],

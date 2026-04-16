@@ -232,7 +232,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
           {
             title: localized("MESSENGER"),
             icon: "chat",
-            navigationPath: "ChatStack",
+            navigationPath: "GlobalChatStack",
           },
           {
             title: localized("PROFILE"),

@@ -4,7 +4,7 @@ import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 
 import HomeScreen from '../screens/home/ManagerHomeScreen/ManagerHomeScreen';
-import ChatStackNavigator from '../../chat/navigation/ChatStackNavigator';
+
 // import MyProfileScreen from '../../screens/MyProfileScreen/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
@@ -30,7 +30,6 @@ const HomeDrawerNavigator = () => {
       )}
     >
       <Drawer.Screen name="HomeScreen" component={HomeScreen} />
-      <Drawer.Screen name="ChatStack" component={ChatStackNavigator} />
       {/* <Drawer.Screen name="MyProfile" component={MyProfileScreen} /> */}
     </Drawer.Navigator>
   );

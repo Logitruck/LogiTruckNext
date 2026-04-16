@@ -10,6 +10,10 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { resolveActiveVendorID } from '../utils/resolveActiveVendorID';
 import { resolveActiveRole } from '../utils/resolveActiveRole';
+import {
+  fetchAndStorePushTokenIfPossible,
+  subscribeToPushTokenRefresh,
+} from '../../notifications/pushToken';
 
 type UserDocData = {
   id: string;
@@ -263,6 +267,29 @@ const currentUser = useMemo(() => {
     setActiveRole,
     reloadSession,
   };
+
+  useEffect(() => {
+  if (!currentUser?.id) {
+    return;
+  }
+
+  let unsubscribeTokenRefresh: (() => void) | undefined;
+
+  const setupPush = async () => {
+    try {
+      await fetchAndStorePushTokenIfPossible(currentUser);
+      unsubscribeTokenRefresh = subscribeToPushTokenRefresh(currentUser.id);
+    } catch (error) {
+      console.error('🔥 Push setup error:', error);
+    }
+  };
+
+  setupPush();
+
+  return () => {
+    unsubscribeTokenRefresh?.();
+  };
+}, [currentUser?.id]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

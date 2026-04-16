@@ -11,11 +11,6 @@ import { useConfig } from '../../config';
 import DriverEntryNavigator from './DriverEntryNavigator';
 import DriverTabs from './DriverTabs';
 import DriverChatStackNavigator from './DriverChatStackNavigator';
-// import DriverActiveJobStack from './DriverActiveJobStack';
-
-// import IMChatScreen from '../../chat/IMChatScreen/IMChatScreen';
-// import MyProfileScreen from '../../chat/IMChatScreen/IMChatScreen';
-// import AssistantScreenScreen from '../../chat/IMChatScreen/IMChatScreen';
 import AddFuelExpenseScreen from '../../modules/vehicleExpenses/screens/AddFuelExpenseScreen/AddFuelExpenseScreen';
 
 const Drawer = createDrawerNavigator();
@@ -29,21 +24,10 @@ const HeaderRightActions = () => {
     <View style={{ flexDirection: 'row', marginRight: 12 }}>
       <TouchableOpacity
         style={{ paddingHorizontal: 8 }}
-        onPress={() => navigation.navigate('DriverChatStack')}
+        onPress={() => navigation.navigate('GlobalChatStack')}
       >
         <MaterialCommunityIcons
           name="chat-outline"
-          size={22}
-          color={colors.primaryText}
-        />
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={{ paddingHorizontal: 8 }}
-        onPress={() => navigation.navigate('Support')}
-      >
-        <MaterialCommunityIcons
-          name="help-circle-outline"
           size={22}
           color={colors.primaryText}
         />
@@ -86,35 +70,22 @@ const DriverRootNavigator = () => {
         component={DriverTabs}
         options={{ headerShown: false }}
       />
+
       <Drawer.Screen
-        name="DriverChatStack"
+        name="GlobalChatStack"
         component={DriverChatStackNavigator}
         options={{
           headerShown: false,
-          drawerItemStyle: { display: "none" },
+          drawerItemStyle: { display: 'none' },
         }}
       />
-
-      {/* <Drawer.Screen
-        name="DriverActiveJobStack"
-        component={DriverActiveJobStack}
-        options={{ headerShown: false }}
-      />
-
-      <Drawer.Screen name="PersonalChat" component={IMChatScreen} />
-      <Drawer.Screen
-        name="Support"
-        component={AssistantScreenScreen}
-        options={{ title: "Support" }}
-      />
-      <Drawer.Screen name="MyProfile" component={MyProfileScreen} /> */}
 
       <Drawer.Screen
         name="AddFuelExpense"
         component={AddFuelExpenseScreen}
         options={{
-          title: "Add Fuel",
-          drawerItemStyle: { display: "none" },
+          title: 'Add Fuel',
+          drawerItemStyle: { display: 'none' },
         }}
       />
     </Drawer.Navigator>

@@ -1,12 +1,12 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import DriverHomeChatScreen from '../../chat/DriverHomeChatScreen/DriverHomeChatScreen';
+import ManagerHomeChatScreen from '../../chat/ManagerHomeChatScreen/ManagerHomeChatScreen';
 import { IMChatScreen, IMViewGroupMembersScreen } from '../../core/chat';
 import IMCreateGroupScreen from '../../core/chat/ui/IMCreateGroupScreen/IMCreateGroupScreen';
 import ChatEntryScreen from '../../chat/ChatEntryScreen/ChatEntryScreen';
 
-export type DriverChatStackParamList = {
+export type CarrierChatStackParamList = {
   ChatHome: undefined;
   ChatEntryScreen: {
     channelID: string;
@@ -28,14 +28,14 @@ export type DriverChatStackParamList = {
   };
 };
 
-const Stack = createNativeStackNavigator<DriverChatStackParamList>();
+const Stack = createNativeStackNavigator<CarrierChatStackParamList>();
 
-const DriverChatStackNavigator = () => {
+const CarrierChatStackNavigator = () => {
   return (
     <Stack.Navigator initialRouteName="ChatHome">
       <Stack.Screen
         name="ChatHome"
-        component={DriverHomeChatScreen}
+        component={ManagerHomeChatScreen}
         options={{ headerShown: false }}
       />
 
@@ -66,4 +66,4 @@ const DriverChatStackNavigator = () => {
   );
 };
 
-export default DriverChatStackNavigator;
+export default CarrierChatStackNavigator;

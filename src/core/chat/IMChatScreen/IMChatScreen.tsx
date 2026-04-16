@@ -400,7 +400,7 @@ const configureNavigation = (passedChannel?: ChatChannel | null) => {
 };
 
 useLayoutEffect(() => {
-  console.log('EFFECT 1 layout navigation');
+  // console.log('EFFECT 1 layout navigation');
   if (!openedFromPushNotification) {
     configureNavigation(
       channelWithHydratedOtherParticipants(route.params.channel),
@@ -410,15 +410,15 @@ useLayoutEffect(() => {
   }
 }, [navigation, route.params.channel]);
 useEffect(() => {
-  console.log('EFFECT 2 configureNavigation', {
-    channelId: channel?.id,
-    remoteChannelId: remoteChannel?.id,
-  });
+  // console.log('EFFECT 2 configureNavigation', {
+  //   channelId: channel?.id,
+  //   remoteChannelId: remoteChannel?.id,
+  // });
   configureNavigation(remoteChannel || channel);
 }, [channel, remoteChannel]);
 
 useEffect(() => {
-  console.log('EFFECT 3 media viewer', selectedMediaIndex);
+  // console.log('EFFECT 3 media viewer', selectedMediaIndex);
   if (selectedMediaIndex !== -1) {
     setIsMediaViewerOpen(true);
   } else {
@@ -427,7 +427,7 @@ useEffect(() => {
 }, [selectedMediaIndex]);
 
   useEffect(() => {
-    console.log('EFFECT 4 subscribe init', currentUser?.id);
+    // console.log('EFFECT 4 subscribe init', currentUser?.id);
     const hydratedChannel = channelWithHydratedOtherParticipants(
       route.params.channel,
     );
@@ -499,23 +499,23 @@ useEffect(() => {
   );
 
   useEffect(() => {
-    console.log('EFFECT 5 remoteChannel', remoteChannel?.id);
+    // console.log('EFFECT 5 remoteChannel', remoteChannel?.id);
     if (!remoteChannel) {
       return;
     }
     // console.log('remoteChannel raw', JSON.stringify(remoteChannel, null, 2));
     const hydratedChannel = channelWithHydratedOtherParticipants(remoteChannel);
 
-    console.log('compare channel', {
-  prevId: channel?.id,
-  nextId: hydratedChannel?.id,
-  prevLastMessage: channel?.lastMessage,
-  nextLastMessage: hydratedChannel?.lastMessage,
-  prevLastMessageDate: channel?.lastMessageDate,
-  nextLastMessageDate: hydratedChannel?.lastMessageDate,
-  prevReadUserIDs: JSON.stringify(channel?.readUserIDs || []),
-  nextReadUserIDs: JSON.stringify(hydratedChannel?.readUserIDs || []),
-});
+//     console.log('compare channel', {
+//   prevId: channel?.id,
+//   nextId: hydratedChannel?.id,
+//   prevLastMessage: channel?.lastMessage,
+//   nextLastMessage: hydratedChannel?.lastMessage,
+//   prevLastMessageDate: channel?.lastMessageDate,
+//   nextLastMessageDate: hydratedChannel?.lastMessageDate,
+//   prevReadUserIDs: JSON.stringify(channel?.readUserIDs || []),
+//   nextReadUserIDs: JSON.stringify(hydratedChannel?.readUserIDs || []),
+// });
 
     setChannel(hydratedChannel);
 
@@ -876,7 +876,7 @@ useEffect(() => {
 
   
 useEffect(() => {
-  console.log('EFFECT 6 downloadObject', !!downloadObject);
+  // console.log('EFFECT 6 downloadObject', !!downloadObject);
   if (downloadObject !== null) {
     onSendInput();
   }

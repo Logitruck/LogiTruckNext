@@ -1,4 +1,4 @@
-package com.anonymous.LogiTruckNext
+package ai.logitruck.LogiTruckNext
 
 import android.app.Application
 import android.content.res.Configuration

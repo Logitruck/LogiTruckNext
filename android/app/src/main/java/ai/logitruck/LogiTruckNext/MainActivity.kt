@@ -1,4 +1,4 @@
-package com.anonymous.LogiTruckNext
+package ai.logitruck.LogiTruckNext
 
 import android.os.Build
 import android.os.Bundle

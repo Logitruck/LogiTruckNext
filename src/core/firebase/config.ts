@@ -1,7 +1,10 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore, serverTimestamp } from 'firebase/firestore';
+import { getApp, getApps, initializeApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import * as FirebaseAuth from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {  serverTimestamp } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
+
 
 const firebaseConfig = {
   apiKey: 'AIzaSyBrKJ1M1AaRyJPEjdSuwoeCka8-OMNVka4',
@@ -15,9 +18,27 @@ const firebaseConfig = {
 
 export const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
+const getReactNativePersistence = (FirebaseAuth as any)
+  .getReactNativePersistence as ((storage: any) => any) | undefined;
+
+export const auth = (() => {
+  try {
+    if (getReactNativePersistence) {
+      return FirebaseAuth.initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage),
+      });
+    }
+
+    return FirebaseAuth.getAuth(app);
+  } catch {
+    return FirebaseAuth.getAuth(app);
+  }
+})();
+
+export const db = getFirestore(app);
+
 export const firestore = getFirestore(app);
-export const db = firestore;
+
 export const functions = getFunctions(app);
 
 export const FieldValue = {
@@ -26,7 +47,10 @@ export const FieldValue = {
 
 export const httpsCallableFunction = httpsCallable;
 
-export const uploadMediaFunctionURL =
-  'https://us-central1-development-69cdc.cloudfunctions.net/uploadMedia';
 
 export default app;
+
+
+
+
+

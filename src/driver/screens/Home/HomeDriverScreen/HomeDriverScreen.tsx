@@ -163,7 +163,7 @@ const HomeDriverScreen = () => {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerIconButton}
-            onPress={() => navigation.navigate('DriverChatStack')}
+            onPress={() => navigation.navigate('GlobalChatStack')}
           >
             <MaterialCommunityIcons
               name="chat-outline"

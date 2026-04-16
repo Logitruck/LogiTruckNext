@@ -45,15 +45,11 @@ export const IMDrawerMenu = ({
   const defaultProfilePhotoURL =
     'https://www.iosapptemplates.com/wp-content/uploads/2019/06/empty-avatar.jpg';
 
-  const actionLowerMenu = async (action?: string) => {
-    if (action === 'logout') {
-      await signOut();
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'LoadScreen' }],
-      });
-    }
-  };
+const actionLowerMenu = async (action?: string) => {
+  if (action === 'logout') {
+    await signOut();
+  }
+};
 
   const mappingMenuItems = menuItems.map((menuItem, index) => (
     <IMMenuButton

@@ -22,7 +22,7 @@ type IMMentionListProps = {
 export default function IMMentionList(props: IMMentionListProps) {
   const { theme, appearance } = useTheme();
   const styles = dynamicStyles(theme, appearance);
- console.log('IMMentionList')
+//  console.log('IMMentionList')
   const renderSuggestionsRow = ({
     item,
     index,
