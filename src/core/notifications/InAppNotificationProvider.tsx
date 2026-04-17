@@ -4,15 +4,16 @@ import {
   Easing,
   Pressable,
   SafeAreaView,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { useTheme } from '../dopebase';
 import {
   InAppNotification,
   registerInAppNotificationHandler,
   unregisterInAppNotificationHandler,
 } from './notificationService';
+import dynamicStyles from './styles';
 
 type Props = {
   children: React.ReactNode;
@@ -25,6 +26,9 @@ const InAppNotificationProvider: React.FC<Props> = ({
   children,
   onOpenNotification,
 }) => {
+  const { theme, appearance } = useTheme();
+  const styles = dynamicStyles(theme, appearance);
+
   const [notification, setNotification] = useState<InAppNotification | null>(null);
   const queueRef = useRef<InAppNotification[]>([]);
   const translateY = useRef(new Animated.Value(-140)).current;
@@ -55,24 +59,27 @@ const InAppNotificationProvider: React.FC<Props> = ({
     ]).start();
   }, [opacity, translateY]);
 
-  const animateOut = useCallback((onFinished?: () => void) => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: -140,
-        duration: 180,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 160,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onFinished?.();
-    });
-  }, [opacity, translateY]);
+  const animateOut = useCallback(
+    (onFinished?: () => void) => {
+      Animated.parallel([
+        Animated.timing(translateY, {
+          toValue: -140,
+          duration: 180,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 160,
+          easing: Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        onFinished?.();
+      });
+    },
+    [opacity, translateY],
+  );
 
   const showNextFromQueue = useCallback(() => {
     if (notification || queueRef.current.length === 0) {
@@ -87,17 +94,20 @@ const InAppNotificationProvider: React.FC<Props> = ({
     setNotification(nextNotification);
   }, [notification]);
 
-  const dismissCurrent = useCallback((afterDismiss?: () => void) => {
-    clearHideTimeout();
+  const dismissCurrent = useCallback(
+    (afterDismiss?: () => void) => {
+      clearHideTimeout();
 
-    animateOut(() => {
-      setNotification(null);
-      afterDismiss?.();
-    });
-  }, [animateOut, clearHideTimeout]);
+      animateOut(() => {
+        setNotification(null);
+        afterDismiss?.();
+      });
+    },
+    [animateOut, clearHideTimeout],
+  );
 
   useEffect(() => {
-    registerInAppNotificationHandler((nextNotification) => {
+    registerInAppNotificationHandler(nextNotification => {
       const alreadyQueued = queueRef.current.some(
         item => item.id === nextNotification.id,
       );
@@ -184,6 +194,8 @@ const InAppNotificationProvider: React.FC<Props> = ({
       >
         <SafeAreaView pointerEvents="box-none">
           <Pressable onPress={handlePress} style={styles.banner}>
+            <View style={styles.accent} />
+
             <View style={styles.textContainer}>
               <Text numberOfLines={1} style={styles.title}>
                 {notification.title}
@@ -200,7 +212,7 @@ const InAppNotificationProvider: React.FC<Props> = ({
         </SafeAreaView>
       </Animated.View>
     );
-  }, [handleClose, handlePress, notification, opacity, translateY]);
+  }, [handleClose, handlePress, notification, opacity, styles, translateY]);
 
   return (
     <View style={styles.container}>
@@ -209,63 +221,5 @@ const InAppNotificationProvider: React.FC<Props> = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  bannerWrapper: {
-    position: 'absolute',
-    top: 8,
-    left: 12,
-    right: 12,
-    zIndex: 9999,
-  },
-  banner: {
-    minHeight: 72,
-    borderRadius: 18,
-    backgroundColor: '#1D1F24',
-    paddingVertical: 14,
-    paddingLeft: 16,
-    paddingRight: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    elevation: 10,
-  },
-  textContainer: {
-    flex: 1,
-    paddingRight: 12,
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  body: {
-    color: '#D6D8DC',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  closeButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeText: {
-    color: '#BFC4CC',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-});
 
 export default InAppNotificationProvider;
