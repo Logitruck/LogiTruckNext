@@ -22,8 +22,26 @@ export type RootStackParamList = {
 export const navigationRef =
   createNavigationContainerRef<RootStackParamList>();
 
+let pendingGlobalChatNavigation: GlobalChatStackParams | null = null;
+
 export const navigateToGlobalChat = (params: GlobalChatStackParams) => {
   if (navigationRef.isReady()) {
     navigationRef.navigate('GlobalChatStack', params);
+    return;
   }
+
+  pendingGlobalChatNavigation = params;
+};
+
+export const flushPendingGlobalChatNavigation = () => {
+  if (!navigationRef.isReady() || !pendingGlobalChatNavigation) {
+    return;
+  }
+
+  navigationRef.navigate('GlobalChatStack', pendingGlobalChatNavigation);
+  pendingGlobalChatNavigation = null;
+};
+
+export const clearPendingGlobalChatNavigation = () => {
+  pendingGlobalChatNavigation = null;
 };

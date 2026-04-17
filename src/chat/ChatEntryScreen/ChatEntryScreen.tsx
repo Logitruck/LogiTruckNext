@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { CommonActions, useNavigation, useRoute } from '@react-navigation/native';
+import { setActiveChatChannelID } from '../../core/notifications/notificationSession';
 
 const ChatEntryScreen = () => {
   const navigation = useNavigation<any>();
@@ -13,6 +14,8 @@ const ChatEntryScreen = () => {
       navigation.goBack();
       return;
     }
+
+    setActiveChatChannelID(channelID);
 
     navigation.dispatch(
       CommonActions.reset({

@@ -15,6 +15,7 @@ import MessageThread from './MessageThread';
 import dynamicStyles from './styles';
 import { EU } from '../../mentions/IMRichTextInput/EditorUtil';
 import { ForwardMessageModal } from './ForwardMessageModal';
+import { setActiveChatChannelID } from '../../notifications/notificationSession';
 import type {
   BaseChatMessage,
   ChatSender,
@@ -162,10 +163,20 @@ function IMChat(props: IMChatProps) {
     setLocalMessages(messages);
   }, [messages]);
 
-  const CANCEL = localized('Cancel');
-  const REPLY = localized('Reply');
-  const FORWARD = localized('Forward');
-  const DELETE = localized('Delete');
+  useEffect(() => {
+    const activeChannelID = channelItem?.id || null;
+
+    setActiveChatChannelID(activeChannelID);
+
+    return () => {
+      setActiveChatChannelID(null);
+    };
+  }, [channelItem?.id]);
+
+  const CANCEL = localized("Cancel");
+  const REPLY = localized("Reply");
+  const FORWARD = localized("Forward");
+  const DELETE = localized("Delete");
 
   const mediaThreadItemSheetOptions = [CANCEL, FORWARD];
   const inBoundThreadItemSheetOptions = [REPLY, FORWARD];
@@ -178,6 +189,9 @@ function IMChat(props: IMChatProps) {
       markUserAsTypingInChannel(channelItem.id, user.id);
     }
   };
+
+    
+
 
   const onChangeText = useCallback(
     ({ displayText, text }: RichTextChange) => {
