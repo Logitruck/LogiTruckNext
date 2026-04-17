@@ -1,14 +1,12 @@
-import React, { useLayoutEffect, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   FlatList,
   ActivityIndicator,
   Pressable,
-  TouchableOpacity,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 import { useTheme, useTranslations } from '../../../core/dopebase';
 import { dynamicStyles } from './styles';
@@ -99,31 +97,6 @@ const HomeDealsScreen = () => {
       setActiveTab(requestedStatus);
     }
   }, [route?.params?.status]);
-
-  useLayoutEffect(() => {
-    const colors = theme.colors[appearance];
-
-    navigation.setOptions({
-      headerShown: true,
-      title: localized('Deals'),
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.openDrawer()}
-          style={styles.headerMenuButton}
-        >
-          <MaterialCommunityIcons
-            name="menu"
-            size={24}
-            color={colors.primaryText}
-          />
-        </TouchableOpacity>
-      ),
-      headerStyle: {
-        backgroundColor: colors.primaryBackground,
-      },
-      headerTintColor: colors.primaryText,
-    });
-  }, [navigation, theme, appearance, localized, styles.headerMenuButton]);
 
   const filteredRequests = requests.filter(
     (req: any) => req.vendorStatus === activeTab

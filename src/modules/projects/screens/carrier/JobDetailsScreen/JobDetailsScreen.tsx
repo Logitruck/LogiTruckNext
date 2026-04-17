@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -63,7 +63,7 @@ const formatCurrency = (value?: number | null): string => {
   }).format(safeValue);
 };
 
-export const JobDetailsScreen = ({ route, navigation }: any) => {
+const JobDetailsScreen = ({ route, navigation }: any) => {
   const { theme, appearance } = useTheme();
   const { localized } = useTranslations();
   const styles = dynamicStyles(theme, appearance);
@@ -84,27 +84,6 @@ export const JobDetailsScreen = ({ route, navigation }: any) => {
   );
 
   const mapRef = useRef<MapView | null>(null);
-
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      headerTitle: job?.name || localized('Job Details'),
-      headerBackTitleVisible: false,
-      headerLeft: () => (
-        <MaterialCommunityIcons
-          name="arrow-left"
-          size={24}
-          color={colors.primaryText}
-          style={{ marginLeft: 16 }}
-          onPress={() => navigation.goBack()}
-        />
-      ),
-      headerStyle: {
-        backgroundColor: colors.primaryBackground,
-      },
-      headerTintColor: colors.primaryText,
-    });
-  }, [navigation, appearance, job?.name, localized, theme, colors.primaryText, colors.primaryBackground]);
 
   useEffect(() => {
     if (
@@ -252,7 +231,7 @@ export const JobDetailsScreen = ({ route, navigation }: any) => {
             <Polyline
               coordinates={polylineCoords}
               strokeWidth={4}
-              strokeColor={colors.primary}
+              strokeColor={colors.primaryForeground}
             />
             <Marker
               coordinate={polylineCoords[0]}

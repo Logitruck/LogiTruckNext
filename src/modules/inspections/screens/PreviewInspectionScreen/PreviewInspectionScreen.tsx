@@ -812,7 +812,7 @@ const PreviewInspectionScreen = () => {
             index: 0,
             routes: [
               {
-                name: "CarrierInspectionsTab",
+                name: "CarrierInspectionTab",
                 state: {
                   routes: [{ name: "inspections" }],
                 },

@@ -3,16 +3,15 @@ import { TouchableOpacity, View } from 'react-native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import { useConfig } from '../../config';
 import { useTheme, useTranslations } from '../../core/dopebase';
+import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
-
 import CarrierHeaderActions from '../components/Header/CarrierHeaderActions';
-import HomeScreen from '../screens/home/ManagerHomeScreen/ManagerHomeScreen';
+import CarrierJobsStackNavigator from './CarrierJobsStackNavigator';
 
 const Drawer = createDrawerNavigator();
 
-const HomeDrawerNavigator = () => {
+const CarrierJobsDrawerNavigator = () => {
   const config = useConfig();
   const { theme, appearance } = useTheme();
   const { localized } = useTranslations();
@@ -21,7 +20,7 @@ const HomeDrawerNavigator = () => {
 
   return (
     <Drawer.Navigator
-      initialRouteName="HomeScreen"
+      initialRouteName="CarrierJobsMain"
       screenOptions={({ navigation }) => ({
         headerShown: true,
         drawerStyle: {
@@ -33,14 +32,14 @@ const HomeDrawerNavigator = () => {
         },
         headerTintColor: colors.primaryText,
         headerShadowVisible: false,
-        headerTitleAlign: 'center',
+        headerTitleAlign: "center",
         headerTitleStyle: {
           color: colors.primaryText,
           fontSize: 17,
-          fontWeight: '600',
+          fontWeight: "600",
         },
         headerLeft: () => (
-          <View style={{ width: 48, justifyContent: 'center' }}>
+          <View style={{ width: 48, justifyContent: "center" }}>
             <TouchableOpacity
               onPress={() => navigation.openDrawer()}
               style={{ marginLeft: 18 }}
@@ -54,32 +53,37 @@ const HomeDrawerNavigator = () => {
           </View>
         ),
         headerRight: () => (
-  <CarrierHeaderActions
-    showNotificationDot
-    onAIPress={() =>
-      navigation.navigate('SupportAssistant', {
-        context: {
-          role: 'carrier',
-          module: 'home',
-          screen: 'OperationsDashboard',
-        },
-      })
-    }
-  />
-),
-        headerTitle: localized('Dashboard'),
+          <CarrierHeaderActions
+            showNotificationDot
+            onAIPress={() =>
+              navigation.navigate("SupportAssistant", {
+                context: {
+                  role: "carrier",
+                  module: "jobs",
+                  screen: "CarrierJobsHome",
+                },
+              })
+            }
+          />
+        ),
       })}
       drawerContent={({ navigation }) => (
         <IMDrawerMenu
           navigation={navigation}
-          menuItems={config.drawerMenuConfig.homeDrawerConfig.upperMenu}
-          menuItemsSettings={config.drawerMenuConfig.homeDrawerConfig.lowerMenu}
+          menuItems={config.drawerMenuConfig.jobsDrawerConfig.upperMenu}
+          menuItemsSettings={config.drawerMenuConfig.jobsDrawerConfig.lowerMenu}
         />
       )}
     >
-      <Drawer.Screen name="HomeScreen" component={HomeScreen} />
+      <Drawer.Screen
+        name="CarrierJobsMain"
+        component={CarrierJobsStackNavigator}
+        options={{
+          headerTitle: localized("Jobs"),
+        }}
+      />
     </Drawer.Navigator>
   );
 };
 
-export default HomeDrawerNavigator;
+export default CarrierJobsDrawerNavigator;

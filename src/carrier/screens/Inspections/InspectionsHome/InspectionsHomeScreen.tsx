@@ -1,6 +1,5 @@
 import React, {
   useState,
-  useLayoutEffect,
   useEffect,
   useCallback,
   useMemo,
@@ -12,9 +11,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-
 import { useCurrentUser } from '../../../../core/onboarding/hooks/useAuth';
 import { useTheme, useTranslations } from '../../../../core/dopebase';
 import { dynamicStyles } from './styles';
@@ -168,44 +166,8 @@ const InspectionsHomeScreen = () => {
     [localized],
   );
 
-  const onBotItemPress = useCallback(() => {}, []);
 
-  useLayoutEffect(() => {
-    const colors = theme.colors[appearance];
 
-    navigation.setOptions({
-      headerShown: true,
-      headerTitle: localized('Inspections'),
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.openDrawer()}
-          style={{ marginLeft: 16 }}
-        >
-          <MaterialCommunityIcons
-            name="menu"
-            size={24}
-            color={colors.primaryText}
-          />
-        </TouchableOpacity>
-      ),
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={onBotItemPress}
-          style={{ marginRight: 16 }}
-        >
-          <MaterialCommunityIcons
-            name="robot-outline"
-            size={24}
-            color={colors.primaryText}
-          />
-        </TouchableOpacity>
-      ),
-      headerStyle: {
-        backgroundColor: colors.primaryBackground,
-      },
-      headerTintColor: colors.primaryText,
-    });
-  }, [navigation, appearance, localized, theme, onBotItemPress]);
 
   useEffect(() => {
     const nextTab = getInitialTab(route?.params?.status);

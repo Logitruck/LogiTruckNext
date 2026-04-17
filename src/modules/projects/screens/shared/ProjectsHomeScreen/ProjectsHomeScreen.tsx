@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -88,28 +88,7 @@ const ProjectsHomeScreen = () => {
   const { projects, loading, counters } =
     role === 'carrier' ? carrierState : finderState;
 
-  useLayoutEffect(() => {
-    const colors = theme.colors[appearance];
-
-    navigation.setOptions({
-      headerShown: true,
-      title: localized('Projects'),
-      headerLeft: () => (
-        <MaterialCommunityIcons
-          name="menu"
-          size={24}
-          color={colors.primaryText}
-          style={{ marginLeft: 16 }}
-          onPress={() => navigation.getParent()?.openDrawer()}
-        />
-      ),
-      headerStyle: {
-        backgroundColor: colors.primaryBackground,
-      },
-      headerTintColor: colors.primaryText,
-    });
-  }, [navigation, appearance, localized, theme]);
-
+  
   const filteredProjects = useMemo(() => {
     return projects.filter((project: any) => project.status === activeTab);
   }, [projects, activeTab]);
