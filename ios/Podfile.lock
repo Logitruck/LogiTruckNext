@@ -1,4 +1,6 @@
 PODS:
+  - EXApplication (55.0.14):
+    - ExpoModulesCore
   - EXConstants (55.0.14):
     - ExpoModulesCore
   - Expo (55.0.15):
@@ -82,6 +84,10 @@ PODS:
     - React-Core
     - React-runtimescheduler
     - ReactCommon
+  - ExpoNotifications (55.0.19):
+    - ExpoModulesCore
+  - ExpoSystemUI (55.0.15):
+    - ExpoModulesCore
   - ExpoWebBrowser (55.0.14):
     - ExpoModulesCore
   - FBLazyVector (0.83.2)
@@ -2570,7 +2576,8 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
-  - EXConstants (from `../node_modules/expo/node_modules/expo-constants/ios`)
+  - EXApplication (from `../node_modules/expo-application/ios`)
+  - EXConstants (from `../node_modules/expo-constants/ios`)
   - Expo (from `../node_modules/expo`)
   - ExpoAsset (from `../node_modules/expo/node_modules/expo-asset/ios`)
   - ExpoDocumentPicker (from `../node_modules/expo-document-picker/ios`)
@@ -2584,6 +2591,8 @@ DEPENDENCIES:
   - "ExpoLogBox (from `../node_modules/expo/node_modules/@expo/log-box`)"
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
   - ExpoModulesJSI (from `../node_modules/expo-modules-core`)
+  - ExpoNotifications (from `../node_modules/expo-notifications/ios`)
+  - ExpoSystemUI (from `../node_modules/expo-system-ui/ios`)
   - ExpoWebBrowser (from `../node_modules/expo-web-browser/ios`)
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - FirebaseCoreInternal
@@ -2701,8 +2710,10 @@ SPEC REPOS:
     - SDWebImageWebPCoder
 
 EXTERNAL SOURCES:
+  EXApplication:
+    :path: "../node_modules/expo-application/ios"
   EXConstants:
-    :path: "../node_modules/expo/node_modules/expo-constants/ios"
+    :path: "../node_modules/expo-constants/ios"
   Expo:
     :path: "../node_modules/expo"
   ExpoAsset:
@@ -2729,6 +2740,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-modules-core"
   ExpoModulesJSI:
     :path: "../node_modules/expo-modules-core"
+  ExpoNotifications:
+    :path: "../node_modules/expo-notifications/ios"
+  ExpoSystemUI:
+    :path: "../node_modules/expo-system-ui/ios"
   ExpoWebBrowser:
     :path: "../node_modules/expo-web-browser/ios"
   FBLazyVector:
@@ -2916,6 +2931,7 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
+  EXApplication: ab5a9ca485adce8be81309a5172d1565e9d7467f
   EXConstants: bfe4ae4e5d882e2e0b130e049665d0af4f4cc1b8
   Expo: a43f44ff1e3a1c73fcabba766e13a38dea22236a
   ExpoAsset: dc4f25f84886120f82b23233bba563ea7afa88f5
@@ -2930,6 +2946,8 @@ SPEC CHECKSUMS:
   ExpoLogBox: a3de999775d423ac9cb85d24bd47628e5392761f
   ExpoModulesCore: df468e597146b519b08dbfa59b206e2c5ad932bd
   ExpoModulesJSI: 4f9a951679fdfbfca1e4feb5c1e10df045333a5a
+  ExpoNotifications: 52440855fb1c86e9bd2033e849489c1b915eeefc
+  ExpoSystemUI: 709410d6e473378d568e5df28fe409cade0ba530
   ExpoWebBrowser: f88a3ba50a025b673236a46d2654a49b985953d6
   FBLazyVector: 32e9ed0301d0fcbc1b2b341dd7fcbf291f51eb83
   Firebase: 99f203d3a114c6ba591f3b32263a9626e450af65
@@ -3040,6 +3058,6 @@ SPEC CHECKSUMS:
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380
   Yoga: dd994d8c85dca5cc9b10f5df8c01f9ef1d0da191
 
-PODFILE CHECKSUM: 8ab2265007999b55632c88459f53c10daef8e97a
+PODFILE CHECKSUM: 375c12c120f542699be707a421cb0414eef32011
 
 COCOAPODS: 1.16.2
