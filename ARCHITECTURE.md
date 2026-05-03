@@ -566,34 +566,7 @@ Estos archivos son complejos. Modificar con precaución y revisar el contexto co
 
 ## 10. Archivos con espacios en el nombre ("copy")
 
-Son artefactos de desarrollo. No deben importarse; candidatos a eliminar una vez verificado que el archivo original es el canónico.
-
-**Hooks:**
-- `useRequestDetails copy.ts`
-- `useSubmitVendorOffer copy.ts`
-- `useAssignedJobs copy.ts`
-- `useDriverAssignedVehicles copy.ts`
-- `useTripTracking copy.ts`
-- `useContractDetails copy.ts`
-- `useCarrierProjectJobssin fucntion.ts` ← typo en el nombre
-
-**Screens / Componentes:**
-- `IMChatScreen copy.ts`
-- `IMChatScreen copy 2.tsx`
-- `InspectionScreen copy.tsx` (driver)
-- `HomeTrackingScreen copy.tsx`
-- `PreviewInspectionScreen copy.tsx`
-- `OffersManagementSection copy.tsx`
-- `OpenRequestSummary copy.tsx`
-- `HomeSheet copy.tsx`
-- `MyRequestsScreen copy.tsx`
-- `CargoDetailsSheet copy.tsx`
-- `ReviewRequestScreen copy.tsx`
-- `DealsScreen copy.tsx`
-- `ProjectsHomeScreen copy.tsx`
-- `index copy.tsx` (dopebase)
-
-> Total: ~20 archivos "copy". Prioridad de limpieza: alta.
+✅ **Eliminados en commit `357b7a0` (2026-05-03)** — 21 archivos, recuperables vía `git show 357b7a0^:<ruta>`.
 
 ---
 
