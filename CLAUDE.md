@@ -150,6 +150,54 @@ Use `jest.clearAllMocks()` in `beforeEach`. Tests for hooks with Firestore live 
 
 **TDD rule:** write the failing test first (red), then implement (green).
 
+## Cloud Functions (`functions/`)
+
+Firebase Cloud Functions viven en `functions/` (raíz del repo). Solo contienen las **32 funciones activas** — el resto (57 LEGACY) permanece en el repo legado `LogiFunctionsV2` hasta que se limpie.
+
+### Estructura
+
+```
+functions/
+├── index.js              ← registro central (solo exports activos)
+├── package.json          ← deps mínimas: firebase-admin, firebase-functions, openai, uuid, axios, node-fetch
+├── core/                 ← utilidades compartidas (collections.js, user.js)
+├── utils/                ← helpers (harversine.js)
+├── notifications/        ← push helpers (utils.js)
+├── app/                  ← 18 funciones httpsCallable llamadas desde la app RN
+│   ├── chat/chatv2.js    ← listChannels, createChannel, insertMessage, etc. (+ 2 triggers)
+│   ├── openai/openai.js  ← insertMessageAI, createChannelAI
+│   ├── tickets/          ← processJobTicket (Driver)
+│   ├── tripRequest/      ← triprequest (Finder)
+│   ├── jobs/             ← assignCarrierProjectJob (Carrier)
+│   └── vendorUser/       ← createVendorUser (Carrier)
+├── triggers/             ← 10 Firestore triggers
+│   ├── triggers.js       ← propagateUserProfileUpdates
+│   ├── inspections/      ← onVehicleInspection{Created,Updated}, onVehicleAssignedDriverChanged
+│   ├── distributeRequest/← onRequestCreated
+│   ├── deels/            ← onRequestUpdated, onVendorRequestUpdated
+│   └── projects/         ← onSetupFlagWritten
+└── landing/              ← 4 funciones del agente de voz investor (landing page)
+    ├── openai/           ← getLogiTruckInvestorContext, getLogiTruckMarketStudy
+    ├── saveInvestorTurn.js
+    └── finalizeInvestorSession.js
+```
+
+### Comandos
+
+```bash
+# Desde la raíz del proyecto (donde está firebase.json)
+firebase emulators:start --only functions,firestore --project logitruck-f6e40
+
+# Deploy (no correr hasta validar con el emulador)
+firebase deploy --only functions
+```
+
+### Reglas
+
+- **No agregar** funciones LEGACY a este `index.js`. Si una feature nueva necesita una function, crearla aquí directamente.
+- `app/chat/chatv2.js` exporta tanto httpsCallable como triggers — ambos están registrados en `index.js`.
+- Las dependencias internas (`core/`, `utils/`, `notifications/`) están al nivel raíz de `functions/` para ser compartidas por `app/` y `triggers/`.
+
 ## Key config locations
 
 | What | Where |

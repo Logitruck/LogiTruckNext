@@ -847,4 +847,90 @@ expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
 
 ---
 
+---
+
+## 15. Cloud Functions (`functions/`)
+
+> Migrado desde `LogiFunctionsV2` el 2026-05-03. Solo las **32 funciones activas** de las 89 originales.
+
+### Estructura
+
+```
+functions/
+├── index.js                    ← registro central — solo exports activos
+├── package.json                ← deps mínimas: firebase-admin, firebase-functions, openai, uuid, axios, node-fetch
+├── firebase.json               ← en raíz del proyecto, apunta a functions/ como source
+├── core/                       ← utilidades compartidas (collections.js, user.js)
+├── utils/                      ← helpers (harversine.js — cálculo de distancia geográfica)
+├── notifications/              ← push notification helpers (utils.js)
+│
+├── app/                        ← 18 funciones httpsCallable — llamadas desde la app RN
+│   ├── chat/
+│   │   ├── chatv2.js           ← listChannels, listChannelsWithFilters, createChannel,
+│   │   │                          markAsRead, markUserAsTypingInChannel, deleteMessage,
+│   │   │                          listMessages, deleteGroup, leaveGroup, updateGroup,
+│   │   │                          addMessageReaction, insertMessage
+│   │   │                          + triggers: syncChatFeedStatus{OnChannelUpdate,OnChannelCreate}
+│   │   └── utils.js
+│   ├── openai/
+│   │   ├── openai.js           ← insertMessageAI, createChannelAI
+│   │   └── utils.js
+│   ├── tickets/
+│   │   └── processJobTicket.js ← processJobTicket (Driver — OCR de tickets)
+│   ├── tripRequest/
+│   │   └── tripRequest.js      ← triprequest (Finder — HERE + EIA + vendors en una llamada)
+│   ├── jobs/
+│   │   └── assignCarrierProjectJob.js ← assignCarrierProjectJob (Carrier)
+│   └── vendorUser/
+│       └── createVendorUser.js ← createVendorUser (Carrier — crea conductor/dispatch)
+│
+├── triggers/                   ← 10 Firestore triggers — disparados por eventos de la app
+│   ├── triggers.js             ← propagateUserProfileUpdates (users/{userId})
+│   ├── inspections/
+│   │   ├── inspections.js      ← onVehicleInspectionCreated, onVehicleInspectionUpdated
+│   │   └── driverChange.js     ← onVehicleAssignedDriverChanged
+│   ├── distributeRequest/
+│   │   └── distributeRequest.js ← onRequestCreated (distribuye a carriers cercanos al crear una solicitud)
+│   ├── deels/
+│   │   ├── onRequestUpdated.js      ← onRequestUpdated
+│   │   └── onVendorRequestUpdated.js ← onVendorRequestUpdated
+│   └── projects/
+│       └── onSetupFlagWritten.js    ← onSetupFlagWritten
+│
+└── landing/                    ← 4 funciones del agente de voz investor (landing page)
+    ├── saveInvestorTurn.js     ← saveLogiTruckInvestorTurn (persiste cada turno)
+    ├── finalizeInvestorSession.js ← finalizeInvestorSession (analiza sesión con GPT-4o)
+    └── openai/
+        ├── investorContext.js  ← getLogiTruckInvestorContext (sirve contexto desde Firestore)
+        └── marketStudy.js      ← getLogiTruckMarketStudy (sirve estudio de mercado)
+```
+
+### Clasificación de funciones (resumen del análisis)
+
+| Categoría | Cantidad | Descripción |
+|---|---|---|
+| ✅ ACTIVA httpsCallable | 18 | App RN las llama via `httpsCallable()` |
+| ✅ ACTIVA trigger | 10 | Se disparan por eventos de Firestore |
+| 🌐 LANDING | 4 | Solo las usa la landing de inversores |
+| ⚠️ LEGACY | 57 | En `LogiFunctionsV2` — no las llama nadie activo |
+
+### Cómo correr functions en local
+
+```bash
+# Desde la raíz del proyecto (donde está firebase.json)
+firebase emulators:start --only functions,firestore --project logitruck-f6e40
+
+# Instalar deps de functions (primera vez)
+cd functions && npm install
+```
+
+### Reglas de desarrollo
+
+- No agregar funciones LEGACY a `index.js`. Crear nuevas funciones directamente aquí.
+- `app/chat/chatv2.js` contiene tanto httpsCallable como Firestore triggers — ambos registrados en `index.js`.
+- Si una función necesita una dependencia nueva, agregarla a `functions/package.json`.
+- Las dependencias internas (`core/`, `utils/`, `notifications/`) están al nivel raíz de `functions/` — compartidas entre `app/` y `triggers/`.
+
+---
+
 *Generado automáticamente el 2026-05-03. Mantener actualizado ante cambios en estructura de carpetas, nuevos roles, módulos o dependencias.*
