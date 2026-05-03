@@ -20,7 +20,7 @@ const { hydrateChatFeedsForAI } = require('./utils')
 
 
 const openai = new OpenAI({
-  apiKey: "OPENAI_KEY_REMOVED",
+  apiKey: process.env.OPENAI_API_KEY,
   organization: 'org-c0TX2yDw8Tyd2KDLqepFrJPG',
   project: 'proj_7WFAHoemNDjGhLCvoYf8Nvdm',
 });

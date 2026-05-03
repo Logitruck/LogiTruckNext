@@ -5,7 +5,7 @@ const { OpenAI } = require('openai');
 const db = admin.firestore();
 
 const openai = new OpenAI({
-  apiKey: 'OPENAI_KEY_REMOVED',
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const SYSTEM_PROMPT = `
