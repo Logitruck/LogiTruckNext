@@ -26,8 +26,10 @@ const KeyboardAvoidingView = ({
   const containerProps = useMemo(() => {
     if (Platform.OS === 'android') {
       return {
-        behavior: 'height' as const,
-        style,
+        behavior: 'padding' as const,
+        enabled: true,
+        style: [{ flex: 1 }, style],
+        keyboardVerticalOffset: verticalOffset,
       };
     }
 
@@ -35,14 +37,14 @@ const KeyboardAvoidingView = ({
       return {
         behavior: 'padding' as const,
         enabled: true,
-        style,
+        style: [{ flex: 1 }, style],
         keyboardVerticalOffset:
           verticalOffset + 46 + Math.max(insets.bottom, 16),
       };
     }
 
     return {
-      style,
+      style: [{ flex: 1 }, style],
     };
   }, [style, verticalOffset, insets.bottom]);
 

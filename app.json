@@ -11,31 +11,35 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "ios": {
-      "supportsTablet": true,
-      "googleServicesFile": "./GoogleService-Info.plist",
-      "bundleIdentifier": "ai.logitruck.LogiTruckNext",
-      "entitlements": {
-        "aps-environment": "development"
-      }
-    },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ],
-      "googleServicesFile": "./google-services.json",
-      "package": "ai.logitruck.LogiTruckNext",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDZz0bwVMErfeGPMTsNRSLWZkMApJdl_T8"
-        }
+   "ios": {
+  "supportsTablet": true,
+  "googleServicesFile": "./GoogleService-Info.plist",
+  "bundleIdentifier": "ai.logitruck.LogiTruckNext",
+  "entitlements": {
+    "aps-environment": "development"
+  },
+  "infoPlist": {
+    "NSLocationWhenInUseUsageDescription": "LogiTruck uses your location while the app is in use to show routes, maps, and operational tracking.",
+    "NSLocationAlwaysAndWhenInUseUsageDescription": "LogiTruck uses your location to support route visibility and operational tracking during active logistics workflows."
+  }
+},
+"android": {
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/android-icon-foreground.png",
+    "backgroundColor": "#FFFFFF",
+    "monochromeImage": "./assets/android-icon-monochrome.png"
+  },
+  "softwareKeyboardLayoutMode": "adjustResize",
+  "predictiveBackGestureEnabled": false,
+  "permissions": [
+    "android.permission.RECORD_AUDIO"
+  ],
+  "googleServicesFile": "./google-services.json",
+  "package": "ai.logitruck.LogiTruckNext",
+  "config": {
+    "googleMaps": {
+      "apiKey": "AIzaSyDZz0bwVMErfeGPMTsNRSLWZkMApJdl_T8"
+    }
       }
     },
     "web": {
@@ -77,6 +81,11 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "122d55d5-6bff-46c2-a9a8-81fe60936b70"
+      }
+    }
   }
 }

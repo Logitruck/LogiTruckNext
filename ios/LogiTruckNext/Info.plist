@@ -46,6 +46,10 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera to capture tickets</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>LogiTruck uses your location to support route visibility and operational tracking during active logistics workflows.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>LogiTruck uses your location while the app is in use to show routes, maps, and operational tracking.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your microphone</string>
 	<key>NSPhotoLibraryUsageDescription</key>

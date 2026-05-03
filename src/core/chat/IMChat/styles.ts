@@ -37,7 +37,7 @@ const dynamicStyles = (
 
     bottomContentContainer: {
       backgroundColor: chatBackgroundColor,
-      marginBottom: 16,
+      marginBottom: 0,
     },
     inputContainer: {
       flex: 8,
@@ -69,6 +69,7 @@ const dynamicStyles = (
       borderTopColor: colorSet.hairline,
       backgroundColor: colorSet.primaryBackground,
       flexDirection: 'row',
+       paddingBottom: Platform.OS === 'android' ? 8 : 0,
     },
     inputIconContainer: {
       margin: 10,
@@ -130,9 +131,9 @@ const dynamicStyles = (
     messageContentThreadContainer: {
       margin: 6,
     },
-    messageThreadContainer: {
-      marginBottom: 24,
-    },
+   messageThreadContainer: {
+  flex: 1,
+},
 
     sendItemContainer: {
       justifyContent: 'flex-end',

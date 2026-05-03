@@ -243,17 +243,18 @@ function BottomInput({
     onChange,
   ]);
 
-  return (
-    <>
-      <IMMentionList
-        list={formattedParticipants}
-        keyword={mentionsKeyword}
-        isTrackingStarted={isTrackingStarted}
-        onSuggestionTap={handleSuggestionTap}
-      />
-      {renderBottomInput()}
-    </>
-  );
+  // Al final de tu archivo BottomInput.tsx
+return (
+  <View style={{ flexDirection: 'column-reverse' }}>
+    {renderBottomInput()}
+    <IMMentionList
+      list={formattedParticipants}
+      keyword={mentionsKeyword}
+      isTrackingStarted={isTrackingStarted}
+      onSuggestionTap={handleSuggestionTap}
+    />
+  </View>
+);
 }
 
 export default BottomInput;
