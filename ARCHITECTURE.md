@@ -841,6 +841,37 @@ npm run test:coverage       # Con reporte de cobertura en /coverage
 | 2 | Módulos compartidos (`modules/`) | Inspections, contracts, projects — alta complejidad |
 | 3 | Componentes core (`core/`) | UI shared — más estable, menor volatilidad |
 
+### Patrón establecido para hooks con Firestore
+
+```typescript
+// 1. Mockear onSnapshot invocando el callback inmediatamente
+mockOnSnapshot.mockImplementation((ref, onNext) => {
+  onNext({ docs: [...] });
+  return mockUnsubscribe;
+});
+
+// 2. Mockear getDoc con resolución o rechazo
+mockGetDoc.mockResolvedValue({ exists: () => true, data: () => ({...}) });
+mockGetDoc.mockRejectedValue(new Error('Network error'));
+
+// 3. Esperar a que el hook termine de procesar
+await waitFor(() => expect(result.current.loading).toBe(false));
+
+// 4. Verificar cleanup del listener en unmount
+act(() => unmount());
+expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+```
+
+- `jest.clearAllMocks()` en `beforeEach` — resetea call counts sin borrar las factory implementations
+- `collection: jest.fn(() => ({}))` en el factory del mock — provee un ref dummy que `onSnapshot` recibe sin importar su valor
+- Para el error callback de `onSnapshot`: `mockImplementation((ref, onNext, onError) => { onError(new Error(...)); return mockUnsubscribe; })`
+
+### Hooks con tests
+
+| Hook | Ubicación | Casos | Assertions |
+|------|-----------|-------|------------|
+| `useVendorRequestsList` | `src/carrier/hooks/__tests__/` | 8 | 12 ✅ |
+
 ---
 
 *Generado automáticamente el 2026-05-03. Mantener actualizado ante cambios en estructura de carpetas, nuevos roles, módulos o dependencias.*
