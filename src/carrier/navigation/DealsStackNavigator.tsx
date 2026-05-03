@@ -11,30 +11,38 @@ const Stack = createNativeStackNavigator();
 
 const DealsStackNavigator = () => {
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen
         name="DealsHome"
         component={HomeDealsScreen}
-        options={{ headerShown: false }}
         initialParams={{ status: null }}
       />
 
       <Stack.Screen
         name="RequestDetails"
         component={RequestDetailsScreen}
-        options={{ title: 'Request Details' }}
+        options={{
+          headerShown: true,
+          title: 'Request Details',
+        }}
       />
 
       <Stack.Screen
         name="PrepareOffer"
         component={PrepareOfferScreen}
-        options={{ title: 'Prepare Offer' }}
+        options={{
+          headerShown: true,
+          title: 'Prepare Offer',
+        }}
       />
 
       <Stack.Screen
         name="ConfirmOffer"
         component={ConfirmOfferScreen}
-        options={{ title: 'Confirm Offer' }}
+        options={{
+          headerShown: true,
+          title: 'Confirm Offer',
+        }}
       />
 
       <Stack.Screen

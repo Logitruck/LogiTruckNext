@@ -108,11 +108,16 @@ const CreateVehicleModal = ({
       : localized('Add Trailer');
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen">
-      <SafeAreaView style={styles.modalContainer} edges={['top', 'bottom']}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="fullScreen"
+    >
+      <SafeAreaView style={styles.modalContainer} edges={["top", "bottom"]}>
         <KeyboardAvoidingView
-          style={styles.modalContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }} // Asegúrate de que ocupe todo el espacio
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20} // Ajusta este número si ves un desfase
         >
           <View
             style={[
@@ -121,88 +126,89 @@ const CreateVehicleModal = ({
             ]}
           >
             <ScrollView
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
               keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag" // Esto ayuda a la UX
               showsVerticalScrollIndicator={false}
             >
               <Text style={styles.modalTitle}>{modalTitle}</Text>
 
               <Text style={styles.helperText}>
                 {localized(
-                  'Create the vehicle with the minimum operational data required for inspections.',
+                  "Create the vehicle with the minimum operational data required for inspections.",
                 )}
               </Text>
 
-              <Text style={styles.label}>{localized('Unit Number')}</Text>
+              <Text style={styles.label}>{localized("Unit Number")}</Text>
               <TextInput
                 style={styles.input}
                 value={number}
                 onChangeText={setNumber}
-                placeholder={localized('Ex: 104 or TR-22')}
+                placeholder={localized("Ex: 104 or TR-22")}
                 placeholderTextColor={theme.colors[appearance].secondaryText}
               />
 
-              <Text style={styles.label}>{localized('License Plate')}</Text>
+              <Text style={styles.label}>{localized("License Plate")}</Text>
               <TextInput
                 style={styles.input}
                 value={licensePlate}
                 onChangeText={setLicensePlate}
                 autoCapitalize="characters"
-                placeholder={localized('Enter license plate')}
+                placeholder={localized("Enter license plate")}
                 placeholderTextColor={theme.colors[appearance].secondaryText}
               />
 
-              <Text style={styles.label}>{localized('Display Name')}</Text>
+              <Text style={styles.label}>{localized("Display Name")}</Text>
               <TextInput
                 style={styles.input}
                 value={name}
                 onChangeText={setName}
-                placeholder={localized('Optional alias for the unit')}
+                placeholder={localized("Optional alias for the unit")}
                 placeholderTextColor={theme.colors[appearance].secondaryText}
               />
 
-              <Text style={styles.label}>{localized('VIN')}</Text>
+              <Text style={styles.label}>{localized("VIN")}</Text>
               <TextInput
                 style={styles.input}
                 value={vin}
                 onChangeText={setVin}
                 autoCapitalize="characters"
-                placeholder={localized('Optional VIN')}
+                placeholder={localized("Optional VIN")}
                 placeholderTextColor={theme.colors[appearance].secondaryText}
               />
 
-              <Text style={styles.label}>{localized('Make')}</Text>
+              <Text style={styles.label}>{localized("Make")}</Text>
               <TextInput
                 style={styles.input}
                 value={make}
                 onChangeText={setMake}
-                placeholder={localized('Ex: Freightliner')}
+                placeholder={localized("Ex: Freightliner")}
                 placeholderTextColor={theme.colors[appearance].secondaryText}
               />
 
-              <Text style={styles.label}>{localized('Model')}</Text>
+              <Text style={styles.label}>{localized("Model")}</Text>
               <TextInput
                 style={styles.input}
                 value={model}
                 onChangeText={setModel}
-                placeholder={localized('Ex: Cascadia')}
+                placeholder={localized("Ex: Cascadia")}
                 placeholderTextColor={theme.colors[appearance].secondaryText}
               />
 
-              <Text style={styles.label}>{localized('Year')}</Text>
+              <Text style={styles.label}>{localized("Year")}</Text>
               <TextInput
                 style={styles.input}
                 value={year}
                 onChangeText={setYear}
                 keyboardType="numeric"
-                placeholder={localized('Ex: 2022')}
+                placeholder={localized("Ex: 2022")}
                 placeholderTextColor={theme.colors[appearance].secondaryText}
               />
 
               <View style={styles.modalActions}>
                 <Pressable style={styles.secondaryButton} onPress={handleClose}>
                   <Text style={styles.secondaryButtonText}>
-                    {localized('Cancel')}
+                    {localized("Cancel")}
                   </Text>
                 </Pressable>
 
@@ -212,7 +218,7 @@ const CreateVehicleModal = ({
                   disabled={saving}
                 >
                   <Text style={styles.primaryButtonText}>
-                    {saving ? localized('Saving...') : localized('Save')}
+                    {saving ? localized("Saving...") : localized("Save")}
                   </Text>
                 </Pressable>
               </View>

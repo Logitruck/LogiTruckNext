@@ -1,6 +1,6 @@
 import React, { useLayoutEffect } from 'react';
 import { ScrollView, TouchableOpacity } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+// import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 
 import { useTheme, useTranslations } from '../../../../core/dopebase';
@@ -21,30 +21,30 @@ const ManagerHomeScreen = () => {
   const { localized } = useTranslations();
   const styles = dynamicStyles(theme, appearance);
 
-  useLayoutEffect(() => {
-    const colors = theme.colors[appearance];
+  // useLayoutEffect(() => {
+  //   const colors = theme.colors[appearance];
 
-    navigation.setOptions({
-      headerShown: true,
-      headerTitle: localized('Operations Dashboard'),
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.openDrawer()}
-          style={styles.headerMenuButton}
-        >
-          <MaterialCommunityIcons
-            name="menu"
-            size={24}
-            color={colors.primaryText}
-          />
-        </TouchableOpacity>
-      ),
-      headerStyle: {
-        backgroundColor: colors.primaryBackground,
-      },
-      headerTintColor: colors.primaryText,
-    });
-  }, [appearance, localized, navigation, styles, theme]);
+  //   navigation.setOptions({
+  //     headerShown: true,
+  //     headerTitle: localized('Operations Dashboard'),
+  //     headerLeft: () => (
+  //       <TouchableOpacity
+  //         onPress={() => navigation.openDrawer()}
+  //         style={styles.headerMenuButton}
+  //       >
+  //         <MaterialCommunityIcons
+  //           name="menu"
+  //           size={24}
+  //           color={colors.primaryText}
+  //         />
+  //       </TouchableOpacity>
+  //     ),
+  //     headerStyle: {
+  //       backgroundColor: colors.primaryBackground,
+  //     },
+  //     headerTintColor: colors.primaryText,
+  //   });
+  // }, [appearance, localized, navigation, styles, theme]);
 
   return (
     <ScrollView

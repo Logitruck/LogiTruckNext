@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import {   KeyboardAvoidingView,Text,  Platform, TouchableOpacity, View } from 'react-native';
+import { useHeaderHeight } from '@react-navigation/elements';
 import {
   useTheme,
   useTranslations,
   ActivityIndicator,
   TouchableIcon,
   MediaViewerModal,
-  KeyboardAvoidingView,
+
 } from '../../dopebase';
 import DialogInput from 'react-native-dialog-input';
 import { useChatChannels } from '../api/firebase/useChatChannels';
@@ -15,6 +16,7 @@ import MessageThread from './MessageThread';
 import dynamicStyles from './styles';
 import { EU } from '../../mentions/IMRichTextInput/EditorUtil';
 import { ForwardMessageModal } from './ForwardMessageModal';
+import { setActiveChatChannelID } from '../../notifications/notificationSession';
 import type {
   BaseChatMessage,
   ChatSender,
@@ -148,7 +150,7 @@ function IMChat(props: IMChatProps) {
     useState(false);
 
   const textInputRef = useRef<any>(null);
-
+ const headerHeight = useHeaderHeight();
   useEffect(() => {
     if (loadingMessages) {
       const timer = setTimeout(() => {
@@ -162,10 +164,20 @@ function IMChat(props: IMChatProps) {
     setLocalMessages(messages);
   }, [messages]);
 
-  const CANCEL = localized('Cancel');
-  const REPLY = localized('Reply');
-  const FORWARD = localized('Forward');
-  const DELETE = localized('Delete');
+  useEffect(() => {
+    const activeChannelID = channelItem?.id || null;
+
+    setActiveChatChannelID(activeChannelID);
+
+    return () => {
+      setActiveChatChannelID(null);
+    };
+  }, [channelItem?.id]);
+
+  const CANCEL = localized("Cancel");
+  const REPLY = localized("Reply");
+  const FORWARD = localized("Forward");
+  const DELETE = localized("Delete");
 
   const mediaThreadItemSheetOptions = [CANCEL, FORWARD];
   const inBoundThreadItemSheetOptions = [REPLY, FORWARD];
@@ -178,6 +190,9 @@ function IMChat(props: IMChatProps) {
       markUserAsTypingInChannel(channelItem.id, user.id);
     }
   };
+
+    
+
 
   const onChangeText = useCallback(
     ({ displayText, text }: RichTextChange) => {
@@ -385,7 +400,12 @@ function IMChat(props: IMChatProps) {
   };
 
   return (
-    <KeyboardAvoidingView style={styles.personalChatContainer}>
+   <View style={{ flex: 1, backgroundColor: theme.colors[appearance].primaryBackground }}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'padding'} // Prueba padding en ambos
+      keyboardVerticalOffset={headerHeight} // Usa la altura real del header
+    >
       <>
         <MessageThread
           messages={messages}
@@ -452,6 +472,7 @@ function IMChat(props: IMChatProps) {
 
       {loading && <ActivityIndicator />}
     </KeyboardAvoidingView>
+    </View>
   );
 }
 

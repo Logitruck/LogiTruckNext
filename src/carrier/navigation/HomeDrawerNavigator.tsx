@@ -1,26 +1,74 @@
 import React from 'react';
+import { TouchableOpacity, View } from 'react-native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+
 import { useConfig } from '../../config';
+import { useTheme, useTranslations } from '../../core/dopebase';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 
+import CarrierHeaderActions from '../components/Header/CarrierHeaderActions';
 import HomeScreen from '../screens/home/ManagerHomeScreen/ManagerHomeScreen';
-
-// import MyProfileScreen from '../../screens/MyProfileScreen/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
 const HomeDrawerNavigator = () => {
   const config = useConfig();
+  const { theme, appearance } = useTheme();
+  const { localized } = useTranslations();
+
+  const colors = theme.colors[appearance];
 
   return (
     <Drawer.Navigator
       initialRouteName="HomeScreen"
-      screenOptions={{
-        headerShown: false,
+      screenOptions={({ navigation }) => ({
+        headerShown: true,
         drawerStyle: {
           width: 300,
+          backgroundColor: colors.primaryBackground,
         },
-      }}
+        headerStyle: {
+          backgroundColor: colors.primaryBackground,
+        },
+        headerTintColor: colors.primaryText,
+        headerShadowVisible: false,
+        headerTitleAlign: 'center',
+        headerTitleStyle: {
+          color: colors.primaryText,
+          fontSize: 17,
+          fontWeight: '600',
+        },
+        headerLeft: () => (
+          <View style={{ width: 48, justifyContent: 'center' }}>
+            <TouchableOpacity
+              onPress={() => navigation.openDrawer()}
+              style={{ marginLeft: 18 }}
+            >
+              <MaterialCommunityIcons
+                name="menu"
+                size={24}
+                color={colors.primaryText}
+              />
+            </TouchableOpacity>
+          </View>
+        ),
+        headerRight: () => (
+  <CarrierHeaderActions
+    showNotificationDot
+    onAIPress={() =>
+      navigation.navigate('SupportAssistant', {
+        context: {
+          role: 'carrier',
+          module: 'home',
+          screen: 'OperationsDashboard',
+        },
+      })
+    }
+  />
+),
+        headerTitle: localized('Dashboard'),
+      })}
       drawerContent={({ navigation }) => (
         <IMDrawerMenu
           navigation={navigation}
@@ -30,7 +78,6 @@ const HomeDrawerNavigator = () => {
       )}
     >
       <Drawer.Screen name="HomeScreen" component={HomeScreen} />
-      {/* <Drawer.Screen name="MyProfile" component={MyProfileScreen} /> */}
     </Drawer.Navigator>
   );
 };

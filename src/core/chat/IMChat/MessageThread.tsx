@@ -69,7 +69,7 @@ function MessageThread({
           const { lastTypingDate } = typingUsers[typingUserID] || {};
 
           if (
-            typeof lastTypingDate === 'number' &&
+            typeof lastTypingDate === "number" &&
             currentTime - lastTypingDate <= 3
           ) {
             setIsParticipantTyping(true);
@@ -137,9 +137,9 @@ function MessageThread({
       data={messages ?? []}
       renderItem={renderChatItem}
       contentContainerStyle={styles.messageContentThreadContainer}
-      removeClippedSubviews
+      removeClippedSubviews={false}
       ListHeaderComponent={renderListHeaderComponent}
-      keyboardShouldPersistTaps="never"
+      keyboardShouldPersistTaps="handled"
       onEndReached={onListEndReached}
       onEndReachedThreshold={0.3}
     />

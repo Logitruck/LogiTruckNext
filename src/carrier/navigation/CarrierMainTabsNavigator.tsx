@@ -8,7 +8,7 @@ import InspectionDrawerNavigator from './InspectionDrawerNavigator';
 import DealsDrawerNavigator from './DealsDrawerNavigator';
 import CarrierProjectsDrawerNavigator from './CarrierProjectsDrawerNavigator';
 import LiveTruckDrawerNavigator from './LiveTruckDrawerNavigator';
-import CarrierJobsStackNavigator from './CarrierJobsStackNavigator';
+import CarrierJobsDrawerNavigator from './CarrierJobsDrawerNavigator';
 
 const Tab = createBottomTabNavigator();
 
@@ -53,7 +53,7 @@ const CarrierMainTabsNavigator = () => {
 
       <Tab.Screen
         name="CarrierJobsTab"
-        component={CarrierJobsStackNavigator}
+        component={CarrierJobsDrawerNavigator}
         options={{
           title: 'Jobs',
           tabBarIcon: ({ color, size }) => (

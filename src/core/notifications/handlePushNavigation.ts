@@ -4,8 +4,10 @@ type PushData = Record<string, string>;
 
 export const handlePushNavigation = (type: string, data: PushData) => {
   switch (type) {
-    case 'chat':
-      if (!data.channelID) {
+    case 'chat': {
+      const channelID = data.channelID;
+
+      if (!channelID) {
         console.log('⚠️ Missing channelID in chat push', data);
         return;
       }
@@ -13,15 +15,16 @@ export const handlePushNavigation = (type: string, data: PushData) => {
       navigateToGlobalChat({
         screen: 'ChatEntryScreen',
         params: {
-          channelID: data.channelID,
+          channelID,
           title: data.title || '',
           openedFromPushNotification: true,
         },
       });
-      break;
+      return;
+    }
 
     default:
       console.log('ℹ️ Unknown push type:', type, data);
-      break;
+      return;
   }
 };

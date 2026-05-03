@@ -113,18 +113,18 @@ const CarrierJobsHomeScreen = () => {
     setActiveTab(getInitialTab(route?.params?.initialStatus));
   }, [route?.params?.initialStatus]);
 
-  useLayoutEffect(() => {
-    const colors = theme.colors[appearance];
+  // useLayoutEffect(() => {
+  //   const colors = theme.colors[appearance];
 
-    navigation.setOptions({
-      headerShown: true,
-      title: localized('Jobs'),
-      headerStyle: {
-        backgroundColor: colors.primaryBackground,
-      },
-      headerTintColor: colors.primaryText,
-    });
-  }, [navigation, appearance, localized, theme]);
+  //   navigation.setOptions({
+  //     headerShown: true,
+  //     title: localized('Jobs'),
+  //     headerStyle: {
+  //       backgroundColor: colors.primaryBackground,
+  //     },
+  //     headerTintColor: colors.primaryText,
+  //   });
+  // }, [navigation, appearance, localized, theme]);
 
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => job?.status === activeTab);

@@ -177,6 +177,27 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
           },
         ],
       },
+      jobsDrawerConfig: {
+        upperMenu: [
+          {
+            title: localized("HOME"),
+            icon: "home",
+            navigationPath: "CarrierJobsMain",
+          },
+          {
+            title: localized("PROFILE"),
+            icon: "account-circle",
+            navigationPath: "MyProfileDrawer",
+          },
+        ],
+        lowerMenu: [
+          {
+            title: localized("LOGOUT"),
+            icon: "logout",
+            action: "logout",
+          },
+        ],
+      },
 
       projectsDrawerConfig: {
         upperMenu: [

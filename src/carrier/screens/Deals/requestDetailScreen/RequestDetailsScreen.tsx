@@ -1,5 +1,4 @@
 import React, {
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -123,12 +122,7 @@ const RequestDetailsScreen = () => {
     });
   }, [routes]);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      title: localized('Deal Details'),
-    });
-  }, [navigation, localized]);
+
 
   const selectedRoute = routes[selectedRouteIndex] || null;
 

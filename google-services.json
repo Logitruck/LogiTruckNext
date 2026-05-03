@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:613066378079:android:108c0d461c464e327f04ea",
+        "mobilesdk_app_id": "1:613066378079:android:e3984a45676f88f87f04ea",
         "android_client_info": {
-          "package_name": "ai.logitruck.logitrucknext"
+          "package_name": "ai.logitruck.LogiTruckNext"
         }
       },
       "oauth_client": [],

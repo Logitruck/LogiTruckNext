@@ -1,20 +1,18 @@
 import React from 'react';
 import {
-  View,
-  TouchableOpacity,
-  Platform,
-  ScrollView,
   Dimensions,
   LayoutChangeEvent,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
+  Modal,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  View,
 } from 'react-native';
-import Modal from 'react-native-modalbox';
 import { Image } from 'expo-image';
 import styles from './styles';
 
 const { width, height } = Dimensions.get('window');
-const swipeArea = Math.floor(height * 0.2);
 
 type MediaViewerModalProps = {
   mediaItems: string[];
@@ -28,11 +26,7 @@ type MediaViewerModalState = {
 };
 
 type ExpoImageLoadEvent = {
-  nativeEvent?: {
-    source?: {
-      width?: number;
-      height?: number;
-    };
+  source?: {
     width?: number;
     height?: number;
   };
@@ -42,8 +36,6 @@ export class MediaViewerModal extends React.Component<
   MediaViewerModalProps,
   MediaViewerModalState
 > {
-  imageLoading = false;
-  imageDoneLoading = false;
   mediaLayouts: number[] = [];
   scrollviewRef = React.createRef<ScrollView>();
 
@@ -57,25 +49,34 @@ export class MediaViewerModal extends React.Component<
     };
   }
 
-  onScrollView = (scrollviewRef: ScrollView | null) => {
+  componentDidUpdate(prevProps: MediaViewerModalProps) {
+    const openedNow =
+      this.props.isModalOpen && !prevProps.isModalOpen;
+
+    const changedIndex =
+      this.props.isModalOpen &&
+      prevProps.selectedMediaIndex !== this.props.selectedMediaIndex;
+
+    if (openedNow || changedIndex) {
+      this.scrollToSelectedImage();
+    }
+  }
+
+  scrollToSelectedImage = () => {
     setTimeout(() => {
-      if (scrollviewRef) {
-        scrollviewRef.scrollTo({
-          y: 0,
-          x: this.mediaLayouts[this.props.selectedMediaIndex] || 0,
-          animated: false,
-        });
-      }
-    }, 500);
+      this.scrollviewRef.current?.scrollTo({
+        x: this.mediaLayouts[this.props.selectedMediaIndex] || 0,
+        y: 0,
+        animated: false,
+      });
+    }, 100);
   };
 
   onImageLoad = (evt: ExpoImageLoadEvent, uri: string) => {
     const { heights } = this.state;
 
-    const imageHeight =
-      evt.nativeEvent?.source?.height || evt.nativeEvent?.height;
-    const imageWidth =
-      evt.nativeEvent?.source?.width || evt.nativeEvent?.width;
+    const imageHeight = evt?.source?.height;
+    const imageWidth = evt?.source?.width;
 
     if (!imageHeight || !imageWidth) {
       return;
@@ -92,17 +93,14 @@ export class MediaViewerModal extends React.Component<
 
   renderCloseButton() {
     return (
-      <TouchableOpacity
-        style={styles.closeButton}
-        onPress={this.props.onClosed}
-      >
+      <Pressable style={styles.closeButton} onPress={this.props.onClosed}>
         <View
           style={[styles.closeCross, { transform: [{ rotate: '45deg' }] }]}
         />
         <View
           style={[styles.closeCross, { transform: [{ rotate: '-45deg' }] }]}
         />
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
@@ -112,51 +110,52 @@ export class MediaViewerModal extends React.Component<
 
     return (
       <Modal
-        style={styles.container}
-        isOpen={isModalOpen}
-        onClosed={onClosed}
-        position="center"
-        swipeToClose
-        swipeArea={swipeArea}
-        swipeThreshold={4}
-        coverScreen
-        backButtonClose
-        useNativeDriver={Platform.OS === 'android'}
-        animationDuration={500}
+        visible={isModalOpen}
+        animationType="fade"
+        transparent
+        statusBarTranslucent={Platform.OS === 'android'}
+        onRequestClose={onClosed}
       >
-        {this.renderCloseButton()}
+        <SafeAreaView style={styles.modalOverlay}>
+          <Pressable style={styles.backdrop} onPress={onClosed} />
 
-        <ScrollView
-          ref={this.onScrollView}
-          style={{ height: '100%', width: '100%' }}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          pagingEnabled
-        >
-          {mediaItems.length > 0 &&
-            mediaItems.map((uri, index) => (
-              <View
-                key={`${uri}-${index}`}
-                style={styles.container}
-                onLayout={(event: LayoutChangeEvent) => {
-                  const layout = event.nativeEvent.layout;
-                  this.mediaLayouts[index] = layout.x;
-                }}
-              >
-                {uri ? (
-                  <Image
-                    source={{ uri }}
-                    style={[
-                      styles.deck,
-                      { height: heights[uri] || heights.default },
-                    ]}
-                    contentFit="contain"
-                    onLoad={e => this.onImageLoad(e as ExpoImageLoadEvent, uri)}
-                  />
-                ) : null}
-              </View>
-            ))}
-        </ScrollView>
+          <View style={styles.modalContent}>
+            {this.renderCloseButton()}
+
+            <ScrollView
+              ref={this.scrollviewRef}
+              style={styles.scroll}
+              contentContainerStyle={styles.scrollContent}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+            >
+              {mediaItems.map((uri, index) => (
+                <View
+                  key={`${uri}-${index}`}
+                  style={styles.container}
+                  onLayout={(event: LayoutChangeEvent) => {
+                    this.mediaLayouts[index] = event.nativeEvent.layout.x;
+                  }}
+                >
+                  {uri ? (
+                    <Image
+                      source={{ uri }}
+                      style={[
+                        styles.deck,
+                        { height: heights[uri] || heights.default },
+                      ]}
+                      contentFit="contain"
+                      onLoad={event =>
+                        this.onImageLoad(event as ExpoImageLoadEvent, uri)
+                      }
+                    />
+                  ) : null}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </SafeAreaView>
       </Modal>
     );
   }

@@ -1,7 +1,11 @@
+import { useCallback } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import RootNavigator from '../navigation/RootNavigator';
 import { useTheme } from '../core/dopebase';
-import { navigationRef } from '../core/navigation/RootNavigation';
+import {
+  navigationRef,
+  flushPendingGlobalChatNavigation,
+} from '../core/navigation/RootNavigation';
 import { usePushListeners } from '../core/notifications/usePushListeners';
 import { handlePushNavigation } from '../core/notifications/handlePushNavigation';
 
@@ -15,14 +19,24 @@ const linking = {
 const AppContainer = () => {
   const { appearance, theme } = useTheme();
 
-  usePushListeners((type, data) => {
-    handlePushNavigation(type, data);
-  });
+  const onHandlePushNavigation = useCallback(
+    (type: string, data: Record<string, string>) => {
+      handlePushNavigation(type, data);
+    },
+    [],
+  );
+
+  usePushListeners(onHandlePushNavigation);
+
+  const handleNavigationReady = useCallback(() => {
+    flushPendingGlobalChatNavigation();
+  }, []);
 
   return (
     <NavigationContainer
       ref={navigationRef}
       linking={linking}
+      onReady={handleNavigationReady}
       theme={
         appearance === 'dark'
           ? theme.navContainerTheme.dark

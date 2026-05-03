@@ -19,7 +19,7 @@ export const fetchAndStorePushTokenIfPossible = async (
       return null;
     }
 
-    await messaging().registerDeviceForRemoteMessages();
+    // await messaging().registerDeviceForRemoteMessages();
 
     const granted = await requestPushPermission();
     if (!granted) {

@@ -8,17 +8,16 @@ const Stack = createNativeStackNavigator();
 
 const CarrierJobsStackNavigator = () => {
   return (
-    <Stack.Navigator>
-      <Stack.Screen
-        name="CarrierJobsHome"
-        component={CarrierJobsHomeScreen}
-        options={{ headerShown: false }}
-      />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="CarrierJobsHome" component={CarrierJobsHomeScreen} />
 
       <Stack.Screen
         name="JobDetails"
         component={JobDetailsScreen}
-        options={{ headerShown: false }}
+        options={({ route }) => ({
+          headerShown: true,
+          title: (route.params as any)?.job?.name || "Job Details",
+        })}
       />
     </Stack.Navigator>
   );

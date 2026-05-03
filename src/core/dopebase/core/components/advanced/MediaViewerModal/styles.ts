@@ -4,6 +4,26 @@ const { width, height } = Dimensions.get('window');
 const closeButtonSize = Math.floor(height * 0.032);
 
 const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  modalContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scroll: {
+    width: '100%',
+    height: '100%',
+  },
+  scrollContent: {
+    alignItems: 'center',
+  },
+
   container: {
     width: Platform.OS === 'web' ? '100%' : width,
     height: Platform.OS === 'web' ? '100%' : height,
@@ -78,6 +98,7 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   closeCross: {
+    position: 'absolute',
     width: '68%',
     height: 1,
     backgroundColor: 'black',
