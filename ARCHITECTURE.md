@@ -758,4 +758,89 @@ LogiTruckNext/
 
 ---
 
+## 14. Testing
+
+### Stack de testing
+
+| Librería | Versión | Propósito |
+|----------|---------|-----------|
+| jest | ^29.7.0 | Test runner (requerido por jest-expo 55) |
+| jest-expo | ^55.0.16 | Preset con transform y mocks de Expo |
+| @testing-library/react-native | ^13.3.3 | Render + queries + renderHook para React 19 |
+| @testing-library/react-hooks | ^8.0.1 | Instalado con `--legacy-peer-deps` — **no usar en tests nuevos** |
+| @testing-library/jest-native | ^5.4.3 | Deprecado — matchers ya incluidos en RNTL v13 |
+| react-test-renderer | 19.2.0 | Pinado exacto para coincidir con react@19.2.0 |
+| @types/jest | ^30.0.0 | Tipos TypeScript para Jest |
+
+> **Nota:** `renderHook` viene de `@testing-library/react-native`, NO de `@testing-library/react-hooks`.
+> Este último está deprecado y no soporta React 19.
+
+### Archivos de configuración
+
+| Archivo | Propósito |
+|---------|-----------|
+| `jest.config.js` | Preset, `transformIgnorePatterns`, `setupFilesAfterEnv` |
+| `jest.setup.ts` | Mocks explícitos de 13 módulos nativos |
+| `babel.config.js` | `reanimated: false` cuando `NODE_ENV === 'test'` |
+| `__tests__/setup.test.ts` | Test trivial de verificación del entorno |
+
+### Módulos nativos mockeados en jest.setup.ts
+
+| Módulo | Razón del mock |
+|--------|---------------|
+| `@react-native-firebase/app` | Puente nativo — no disponible en Jest |
+| `@react-native-firebase/messaging` | Puente nativo — FCM |
+| `@react-native-async-storage/async-storage` | Usa mock oficial del paquete |
+| `react-native-maps` | Componentes nativos de mapa |
+| `expo-notifications` | APIs nativas de notificaciones |
+| `expo-image-picker` | APIs nativas de cámara/fotos |
+| `expo-document-picker` | APIs nativas del sistema de archivos |
+| `react-native-reanimated` | Usa `react-native-reanimated/mock` |
+| `@gorhom/bottom-sheet` | Depende de reanimated y gesture-handler |
+| `react-native-gesture-handler` | Setup vía `jestSetup` del paquete |
+| `@react-native-community/datetimepicker` | Componente nativo |
+| `react-native-blob-util` | APIs nativas de filesystem |
+| `react-native-pdf` | Renderizador PDF nativo |
+
+### Decisiones técnicas tomadas
+
+1. **`react-test-renderer` pinado a `19.2.0`** — la versión `19.2.5` (latest) requiere `react@^19.2.5` pero el proyecto usa `react@19.2.0`. Si se actualiza React, actualizar también este pin.
+
+2. **`@testing-library/react-hooks` con `--legacy-peer-deps`** — solo soporta React 16-17. Se instaló porque estaba en el requisito original. No lo usar en tests nuevos; usar `renderHook` de RNTL v13.
+
+3. **`babel.config.js`: `{ reanimated: false }` aislado en branch `isTest`** — `react-native-reanimated v4` requiere `react-native-worklets` para su Babel plugin, paquete que no está instalado. La opción `reanimated: false` previene que `babel-preset-expo` lo cargue automáticamente en Jest. **Crítico:** el condicional usa un `if (isTest) { return ... }` separado para que el caso no-test devuelva `presets: ['babel-preset-expo']` como string puro — sin options object (`{}`). Pasar `{}` explícito en lugar de la forma string activa una ruta diferente en `babel-preset-expo` v55 que intenta resolver `react-refresh/babel`; si ese módulo no está disponible como dependencia directa, el Metro bundler y el build de iOS fallan con `Cannot find module 'react-refresh/babel'`.
+
+   > **Gotcha conocido:** NO usar `['babel-preset-expo', isTest ? { reanimated: false } : {}]` — el `{}` del caso no-test es suficiente para romper iOS. El patrón correcto es:
+   > ```js
+   > if (isTest) { return { presets: [['babel-preset-expo', { reanimated: false }]] }; }
+   > return { presets: ['babel-preset-expo'], plugins: ['react-native-reanimated/plugin'] };
+   > ```
+
+4. **`transformIgnorePatterns` sin `/` al final del lookahead** — el patrón `expo` (sin trailing `/`) actúa como prefix match y cubre `expo/`, `expo-modules-core/`, `expo-notifications/`, etc. Con trailing `/` solo matchearía `expo/` exacto y `expo-modules-core` quedaría excluido de la transformación, causando errores de sintaxis ESM.
+
+5. **`process.env.NODE_ENV` en lugar de `api.env()`** — después de `api.cache(true)`, llamar `api.env()` lanza un error de Babel porque intentaría modificar la estrategia de caché. `process.env.NODE_ENV` es una variable de entorno directa que Jest setea a `'test'` automáticamente.
+
+### Comandos
+
+```bash
+npm test                    # Corre todos los tests
+npm run test:watch          # Modo watch (re-runs al guardar)
+npm run test:coverage       # Con reporte de cobertura en /coverage
+```
+
+### Regla de la fábrica
+
+> **Opus genera el test ANTES de implementar cualquier feature.**
+> El test debe fallar primero (🔴 red) y pasar después de la implementación (🟢 green).
+
+### Prioridad de cobertura
+
+| Prioridad | Zona | Razón |
+|-----------|------|-------|
+| 1 | Hooks de roles (`carrier/`, `driver/`, `finder/`) | Lógica de negocio core, mayor riesgo de regresión |
+| 2 | Módulos compartidos (`modules/`) | Inspections, contracts, projects — alta complejidad |
+| 3 | Componentes core (`core/`) | UI shared — más estable, menor volatilidad |
+
+---
+
 *Generado automáticamente el 2026-05-03. Mantener actualizado ante cambios en estructura de carpetas, nuevos roles, módulos o dependencias.*
