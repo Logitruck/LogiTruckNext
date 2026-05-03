@@ -43,3 +43,7 @@ android/.gradle/
 android/app/build/
 ios/build/
 
+firestore-debug.log
+firebase-debug.log
+ui-debug.log
+.firebase/
