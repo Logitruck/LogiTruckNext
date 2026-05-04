@@ -258,7 +258,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
           {
             title: localized("PROFILE"),
             icon: "account-circle",
-            navigationPath: "MyProfile",
+            navigationPath: "MyProfileDrawer",
           },
         ],
         lowerMenu: [
@@ -402,7 +402,7 @@ export const ConfigProvider = ({ children }: { children: React.ReactNode }) => {
           {
             title: localized("PROFILE"),
             icon: "account-circle",
-            navigationPath: "MyProfile",
+            navigationPath: "MyProfileDrawer",
           },
         ],
       },

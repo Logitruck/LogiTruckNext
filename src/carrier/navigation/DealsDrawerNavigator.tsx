@@ -9,6 +9,7 @@ import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import CarrierHeaderActions from '../components/Header/CarrierHeaderActions';
 
 import DealsStackNavigator from './DealsStackNavigator';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -83,6 +84,7 @@ const DealsDrawerNavigator = () => {
           headerTitle: localized('Deals'),
         }}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

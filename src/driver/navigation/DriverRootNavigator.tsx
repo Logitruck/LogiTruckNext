@@ -12,6 +12,7 @@ import DriverEntryNavigator from './DriverEntryNavigator';
 import DriverTabs from './DriverTabs';
 import DriverChatStackNavigator from './DriverChatStackNavigator';
 import AddFuelExpenseScreen from '../../modules/vehicleExpenses/screens/AddFuelExpenseScreen/AddFuelExpenseScreen';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -86,6 +87,14 @@ const DriverRootNavigator = () => {
         options={{
           title: 'Add Fuel',
           drawerItemStyle: { display: 'none' },
+        }}
+      />
+      <Drawer.Screen
+        name="MyProfileDrawer"
+        component={MyProfileScreen}
+        options={{
+          drawerItemStyle: { display: 'none' },
+          headerTitle: '',
         }}
       />
     </Drawer.Navigator>

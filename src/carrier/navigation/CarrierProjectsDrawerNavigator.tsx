@@ -8,6 +8,7 @@ import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import CarrierHeaderActions from '../components/Header/CarrierHeaderActions';
 import ProjectsCarrierStack from '../../modules/projects/navigation/CarrierProjectsStackNavigator';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -86,6 +87,7 @@ const CarrierProjectsDrawerNavigator = () => {
           headerTitle: localized('Projects'),
         }}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

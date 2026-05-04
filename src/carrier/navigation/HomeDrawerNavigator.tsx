@@ -9,6 +9,7 @@ import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 
 import CarrierHeaderActions from '../components/Header/CarrierHeaderActions';
 import HomeScreen from '../screens/home/ManagerHomeScreen/ManagerHomeScreen';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -78,6 +79,7 @@ const HomeDrawerNavigator = () => {
       )}
     >
       <Drawer.Screen name="HomeScreen" component={HomeScreen} />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

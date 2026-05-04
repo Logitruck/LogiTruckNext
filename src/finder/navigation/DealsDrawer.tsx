@@ -3,6 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import { DealsStack } from './DealsStack';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -27,6 +28,7 @@ const DealsDrawer = () => {
       )}
     >
       <Drawer.Screen name="DealsScreen" component={DealsStack} />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

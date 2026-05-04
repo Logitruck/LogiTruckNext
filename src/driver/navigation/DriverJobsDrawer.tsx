@@ -8,6 +8,7 @@ import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 
 import DriverJobsScreen from '../screens/Jobs/DriverJobsScreen/DriverJobsScreen';
 import ReportViewScreen from '../../modules/inspections/screens/ReportView/ReportViewScreen/ReportViewScreen';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -29,6 +30,7 @@ const DriverJobsDrawer = () => {
       {/* <Drawer.Screen name="PersonalChat" component={IMChatScreen} /> */}
       {/* <Drawer.Screen name="MyProfile" component={MyProfileScreen} /> */}
       <Drawer.Screen name="ReportView" component={ReportViewScreen} />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

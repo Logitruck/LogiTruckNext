@@ -7,6 +7,7 @@ import { ProfileConfigProvider } from '../core/profile/hooks/useProfileConfig';
 import { OnboardingConfigProvider } from '../core/onboarding/hooks/useOnboardingConfig';
 import { VendorConfigProvider } from '../core/vendor/hooks/useVendorConfig';
 import AppContainer from '../screens/AppContainer';
+import LanguageInitializer from '../core/profile/components/LanguageInitializer';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -26,6 +27,7 @@ const AppContent = () => {
       <ProfileConfigProvider config={config}>
         <OnboardingConfigProvider config={config}>
           <StatusBar style="auto" />
+          <LanguageInitializer />
           <MainNavigator />
         </OnboardingConfigProvider>
       </ProfileConfigProvider>

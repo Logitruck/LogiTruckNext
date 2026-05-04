@@ -4,6 +4,7 @@ import { useTheme } from '../../core/dopebase';
 import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import { SearchStack } from './SearchStack';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -29,6 +30,7 @@ const SearchDrawer = () => {
       )}
     >
       <Drawer.Screen name="SearchScreen" component={SearchStack} />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

@@ -8,6 +8,7 @@ import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import CarrierHeaderActions from '../components/Header/CarrierHeaderActions';
 import CarrierJobsStackNavigator from './CarrierJobsStackNavigator';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -82,6 +83,7 @@ const CarrierJobsDrawerNavigator = () => {
           headerTitle: localized("Jobs"),
         }}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

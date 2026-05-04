@@ -3,6 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import ProjectsStack from '../../modules/projects/navigation/CarrierProjectsStackNavigator';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -31,6 +32,7 @@ const ProjectsDrawer = () => {
         name="ProjectsMain"
         component={ProjectsStack}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

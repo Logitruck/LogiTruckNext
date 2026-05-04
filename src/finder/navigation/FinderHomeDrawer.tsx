@@ -3,6 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import { HomeFinderNavigator } from './FinderStackNavigators';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -30,6 +31,7 @@ const FinderHomeDrawer = () => {
         name="FinderHomeScreen"
         component={HomeFinderNavigator}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

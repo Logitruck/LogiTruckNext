@@ -4,6 +4,7 @@ import { useTheme } from '../../core/dopebase';
 import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import LiveTruckStackNavigator from './LiveTruckStackNavigator';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -32,6 +33,7 @@ const LiveTruckDrawerNavigator = () => {
         name="LiveTruck"
         component={LiveTruckStackNavigator}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

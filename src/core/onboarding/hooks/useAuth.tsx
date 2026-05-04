@@ -26,6 +26,7 @@ type UserDocData = {
   firstName?: string;
   lastName?: string;
   email?: string;
+  preferredLanguage?: string;
   [key: string]: any;
 };
 
@@ -38,6 +39,7 @@ type VendorUserDocData = {
   lastName?: string;
   email?: string;
   phoneNumber?: string;
+  preferredLanguage?: string;
   [key: string]: any;
 };
 

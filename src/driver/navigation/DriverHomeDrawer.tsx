@@ -8,6 +8,7 @@ import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 
 import HomeDriverScreen from '../screens/Home/HomeDriverScreen/HomeDriverScreen';
 import ReportViewScreen from '../../modules/inspections/screens/ReportView/ReportViewScreen/ReportViewScreen';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -46,6 +47,7 @@ const DriverHomeDrawer = () => {
         name="ReportView"
         component={ReportViewScreen}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

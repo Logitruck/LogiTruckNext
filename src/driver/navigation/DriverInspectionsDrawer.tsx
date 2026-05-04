@@ -7,6 +7,7 @@ import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 // import MyProfileScreen from '../../screens/MyProfileScreen/MyProfileScreen';
 
 import DriverInspectionsStack from './DriverInspectionsStack';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -34,6 +35,7 @@ const DriverInspectionsDrawer = () => {
         name="DriverInspectionsRoot"
         component={DriverInspectionsStack}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
 
       {/* <Drawer.Screen
         name="PersonalChat"

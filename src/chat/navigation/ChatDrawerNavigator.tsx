@@ -3,7 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import ChatStackNavigator from './ChatStackNavigator';
-// import MyProfileScreen from '../../screens/MyProfileScreen/MyProfileScreen';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -28,10 +28,7 @@ const ChatDrawerNavigator = () => {
         options={{ headerShown: false }}
       />
 
-      {/* <Drawer.Screen
-        name="MyProfileDrawer"
-        component={MyProfileScreen}
-      /> */}
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };

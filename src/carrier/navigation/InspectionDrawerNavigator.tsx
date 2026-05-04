@@ -4,6 +4,7 @@ import { useConfig } from '../../config';
 import { IMDrawerMenu } from '../../core/ui/drawer/IMDrawerMenu/IMDrawerMenu';
 import InspectionsStackNavigator from './InspectionsStackNavigator';
 import AddRepairExpenseScreen from '../../modules/vehicleExpenses/screens/AddRepairExpenseScreen/AddRepairExpenseScreen';
+import MyProfileScreen from '../../core/profile/screens/MyProfileScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -41,6 +42,7 @@ const InspectionDrawerNavigator = () => {
           drawerItemStyle: { display: 'none' },
         }}
       />
+      <Drawer.Screen name="MyProfileDrawer" component={MyProfileScreen} options={{ headerShown: true, headerTitle: '' }} />
     </Drawer.Navigator>
   );
 };
