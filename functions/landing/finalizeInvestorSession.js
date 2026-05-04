@@ -1,16 +1,15 @@
 const { onRequest } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { OpenAI } = require('openai');
 
 const db = getFirestore();
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openAIKey = defineSecret('OPENAI_API_KEY');
 
 exports.finalizeInvestorSession = onRequest(
-  { cors: true, timeoutSeconds: 120 },
+  { cors: true, timeoutSeconds: 120, secrets: [openAIKey] },
   async (req, res) => {
+    const openai = new OpenAI({ apiKey: openAIKey.value() });
     try {
       if (req.method !== 'POST') {
         return res.status(405).json({ ok: false, error: 'Method not allowed' });

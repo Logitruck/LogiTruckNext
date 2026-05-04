@@ -12,11 +12,17 @@ const collectionsUtils = require("../../core/collections");
 const { add } = collectionsUtils;
 const { OpenAI } = require("openai");
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  organization: "org-c0TX2yDw8Tyd2KDLqepFrJPG",
-  project: "proj_7WFAHoemNDjGhLCvoYf8Nvdm",
-});
+let _openai = null;
+const getOpenAI = () => {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+      organization: "org-c0TX2yDw8Tyd2KDLqepFrJPG",
+      project: "proj_7WFAHoemNDjGhLCvoYf8Nvdm",
+    });
+  }
+  return _openai;
+};
 
 exports.createChannelAI = async (data) => {
   console.log("Creating channel AI:");
@@ -31,7 +37,7 @@ exports.createChannelAI = async (data) => {
 
   try {
     // Intentar recuperar un thread existente en OpenAI con el mismo ID
-    const existingThread = await openai.beta.threads.retrieve(threadID);
+    const existingThread = await getOpenAI().beta.threads.retrieve(threadID);
 
     if (existingThread?.id) {
       console.log(
@@ -47,7 +53,7 @@ exports.createChannelAI = async (data) => {
   }
 
   // Crear un nuevo thread en OpenAI
-  const newThread = await openai.beta.threads.create();
+  const newThread = await getOpenAI().beta.threads.create();
 
   // Asegurarse de que el nuevo thread fue creado correctamente
   if (!newThread?.id) {
@@ -150,21 +156,21 @@ exports.insertMessageAI = async (data) => {
 
  
 
-  const newMessage = await openai.beta.threads.messages.create(threadID, {
+  const newMessage = await getOpenAI().beta.threads.messages.create(threadID, {
     role: "user",
     content: message?.content,
   });
 // Set the assistant as typing
 await setAssistantTyping(channelID, senderAI.id);
 
-  let run = await openai.beta.threads.runs.createAndPoll(threadID, {
+  let run = await getOpenAI().beta.threads.runs.createAndPoll(threadID, {
     assistant_id: assistantID,
     instructions:
       "Please address the user as MAX IA an expert support advisor. answer in the language of the question. only whith information of logitruck",
   });
 
   if (run.status === "completed") {
-    const messagesAnswer = await openai.beta.threads.messages.list(
+    const messagesAnswer = await getOpenAI().beta.threads.messages.list(
       run.thread_id
     );
     // Insert assistant's responses into Firestore and send them to participants

@@ -1,12 +1,10 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 const { OpenAI } = require('openai');
 
 const db = admin.firestore();
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openAIKey = defineSecret('OPENAI_API_KEY');
 
 const SYSTEM_PROMPT = `
 You analyze logistics ticket images and extract only information that is clearly visible.
@@ -73,8 +71,10 @@ exports.processJobTicket = onCall(
   {
     timeoutSeconds: 120,
     region: ['us-central1'],
+    secrets: [openAIKey],
   },
   async (req) => {
+    const openai = new OpenAI({ apiKey: openAIKey.value() });
     const auth = req.auth;
     if (!auth) {
       throw new HttpsError('unauthenticated', 'Authentication required.');

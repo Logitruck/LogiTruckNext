@@ -1,33 +1,28 @@
-// Importa las dependencias necesarias
-const {onCall,HttpsError,onRequest} = require('firebase-functions/v2/https');
-const functions = require('firebase-functions');
+const { onCall, HttpsError, onRequest } = require('firebase-functions/v2/https');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
-const { v4: uuidv4 } = require('uuid')
+const { v4: uuidv4 } = require('uuid');
 const userClient = require('../../core/user');
 const { fetchUser } = userClient;
 const collectionsUtils = require('../../core/collections');
-const { add, remove, getList, getDoc, deleteCollection } = collectionsUtils
-const { OpenAI } = require("openai");
+const { add, remove, getList, getDoc, deleteCollection } = collectionsUtils;
+const { OpenAI } = require('openai');
 const db = admin.firestore();
 
-const chatChannelsRef = db.collection('channelsAI')
+const chatChannelsRef = db.collection('channelsAI');
 
+const { createChannelAI, insertMessageAI } = require('./utils');
 
-
-const { createChannelAI, insertMessageAI } = require('./utils')
-
-const { hydrateChatFeedsForAI } = require('./utils')
-
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-  organization: 'org-c0TX2yDw8Tyd2KDLqepFrJPG',
-  project: 'proj_7WFAHoemNDjGhLCvoYf8Nvdm',
-});
+const openAIKey = defineSecret('OPENAI_API_KEY');
 
 exports.chatAssistant = onRequest(
-  {timeoutSeconds: 120, region: ["us-central1"]},
-  async(req, res) => {
+  { timeoutSeconds: 120, region: ['us-central1'], secrets: [openAIKey] },
+  async (req, res) => {
+    const openai = new OpenAI({
+      apiKey: openAIKey.value(),
+      organization: 'org-c0TX2yDw8Tyd2KDLqepFrJPG',
+      project: 'proj_7WFAHoemNDjGhLCvoYf8Nvdm',
+    });
     if (req.method !== "GET" || !req.query.question) {
       return res.status(400).send('Bad Request: Missing "question" parameter');
     }
@@ -117,7 +112,7 @@ exports.chatAssistant = onRequest(
   });
 
 
-exports.createChannelAI= onCall(async (req,context) => {
+exports.createChannelAI = onCall({ secrets: [openAIKey] }, async (req, context) => {
   return await createChannelAI(req.data)
 })
 
@@ -211,7 +206,7 @@ exports.listMessages = onCall(async (req) => {
   }
 })
 
-exports.insertMessageAI = onCall(async (req, context) => {
+exports.insertMessageAI = onCall({ secrets: [openAIKey] }, async (req, context) => {
   return await insertMessageAI(req.data)
 })
 
