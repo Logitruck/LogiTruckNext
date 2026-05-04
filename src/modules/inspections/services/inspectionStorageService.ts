@@ -174,3 +174,22 @@ export const hasPendingInspectionReports = async () => {
   const currentItems = await readAll();
   return currentItems.length > 0;
 };
+
+// Adapters: legacy interface used by PreviewRepairInspection (pre-refactor schema)
+export const getPendingReports = async (): Promise<{ key: string; data: any }[]> => {
+  const reports = await getPendingInspectionReports();
+  return reports.map(r => ({ key: r.id, data: { dataToSend: r.reportData, filePath: r.pdfUri } }));
+};
+
+export const saveReportLocally = async (payload: { dataToSend: any; filePath: string }) => {
+  return savePendingInspectionReport({
+    role: 'reviewer',
+    reportData: payload.dataToSend,
+    pdfUri: payload.filePath,
+    signatureDataUrl: '',
+  });
+};
+
+export const markReportAsSynced = async (key: string, _report: any) => {
+  return removePendingInspectionReport(key);
+};

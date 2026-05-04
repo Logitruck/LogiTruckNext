@@ -67,6 +67,8 @@ const baseTheme = {
 
       quickActionBackground: '#F5F7FA',
       quickActionBorder: '#E0E0E0',
+      danger: '#ea0606',
+      success: '#1E8C4E',
     },
     dark: {
       primaryBackground: '#000000',
@@ -103,6 +105,8 @@ const baseTheme = {
 
       quickActionBackground: '#1A1A1A',
       quickActionBorder: '#333333',
+      danger: '#FF4C4C',
+      success: '#4CFFA5',
     },
   },
   roleThemes: {
@@ -156,8 +160,11 @@ const baseTheme = {
     s: '400',
     m: '600',
     l: '800',
+  } as const,
+  icons: {
+    search: require('../assets/icons/search.png') as number,
+    menu: undefined as number | undefined,
   },
-  icons: {},
   button: {
     borderRadius: 8,
   },

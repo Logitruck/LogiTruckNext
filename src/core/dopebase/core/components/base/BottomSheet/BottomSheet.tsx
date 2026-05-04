@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { SafeAreaView } from 'react-native';
+import { SafeAreaView, StyleProp, ViewStyle } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetModalProvider,
@@ -14,6 +14,12 @@ type BottomSheetProps = {
   handleComponent?: React.FC<any> | null;
   snapPoints?: Array<string | number>;
   children?: React.ReactNode;
+  index?: number;
+  style?: StyleProp<ViewStyle>;
+  backgroundStyle?: StyleProp<ViewStyle>;
+  enablePanDownToClose?: boolean;
+  enableContentPanningGesture?: boolean;
+  enableHandlePanningGesture?: boolean;
 };
 
 const BottomSheet = forwardRef<BottomSheetModal, BottomSheetProps>(
@@ -24,6 +30,12 @@ const BottomSheet = forwardRef<BottomSheetModal, BottomSheetProps>(
       handleComponent = null,
       snapPoints,
       children,
+      index = 1,
+      style,
+      backgroundStyle,
+      enablePanDownToClose,
+      enableContentPanningGesture,
+      enableHandlePanningGesture,
     },
     myRef,
   ) => {
@@ -34,13 +46,16 @@ const BottomSheet = forwardRef<BottomSheetModal, BottomSheetProps>(
       <BottomSheetModalProvider>
         <BottomSheetModal
           ref={myRef}
-          index={1}
+          index={index}
           animateOnMount={animateOnMount}
-          backgroundStyle={styles.background}
+          backgroundStyle={backgroundStyle ?? styles.background}
           snapPoints={snapPoints ?? ['25%', '50%']}
           handleComponent={handleComponent ?? undefined}
-          style={styles.bottomSheet}
+          style={style ?? styles.bottomSheet}
           onChange={handleSheetChanges}
+          enablePanDownToClose={enablePanDownToClose}
+          enableContentPanningGesture={enableContentPanningGesture}
+          enableHandlePanningGesture={enableHandlePanningGesture}
         >
           <SafeAreaView style={styles.container}>{children}</SafeAreaView>
         </BottomSheetModal>

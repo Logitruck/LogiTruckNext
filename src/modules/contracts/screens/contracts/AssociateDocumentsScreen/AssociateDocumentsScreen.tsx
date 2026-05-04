@@ -19,6 +19,7 @@ import {
 
 import { auth, db } from '../../../../../core/firebase/config';
 import { useTheme, useTranslations } from '../../../../../core/dopebase';
+import { useCurrentUser } from '../../../../../core/onboarding/hooks/useAuth';
 import { dynamicStyles } from './styles';
 
 type VendorDocument = {
@@ -33,6 +34,7 @@ type VendorDocument = {
 const AssociateDocumentsScreen = () => {
   const { theme, appearance } = useTheme();
   const { localized } = useTranslations();
+  const currentUser = useCurrentUser();
   const styles = dynamicStyles(theme, appearance);
 
   const route = useRoute<any>();
@@ -46,8 +48,6 @@ const AssociateDocumentsScreen = () => {
   useEffect(() => {
     const fetchDocuments = async () => {
       try {
-          const currentUser = useCurrentUser();
-
         if (!currentUser?.uid) {
           throw new Error('User not authenticated');
         }
@@ -102,7 +102,6 @@ const AssociateDocumentsScreen = () => {
 
       setSubmitting(true);
 
-        const currentUser = useCurrentUser();
       if (!currentUser?.uid) {
         throw new Error('User not authenticated');
       }
