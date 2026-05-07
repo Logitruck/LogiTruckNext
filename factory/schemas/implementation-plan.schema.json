@@ -1,0 +1,269 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LogiTruck Factory Implementation Plan",
+  "type": "object",
+  "required": [
+    "featureName",
+    "featureArchetype",
+    "businessIntent",
+    "repoContext",
+    "architectureImpact",
+    "automationScope",
+    "files",
+    "testingStrategy",
+    "factoryExecutionPlan",
+    "acceptanceCriteria"
+  ],
+  "properties": {
+    "featureName": {
+      "type": "string"
+    },
+
+    "featureArchetype": {
+      "type": "string",
+      "enum": [
+        "utility-feature",
+        "mobile-screen-feature",
+        "firestore-feature",
+        "cloud-function-feature",
+        "maps-tracking-feature",
+        "native-integration-feature",
+        "payments-stripe-connect-feature",
+        "ai-support-agent-feature",
+        "voice-agent-elevenlabs-feature",
+        "landing-react-vite-feature"
+      ]
+    },
+
+    "businessIntent": {
+      "type": "object",
+      "required": [
+        "problem",
+        "expectedOutcome"
+      ],
+      "properties": {
+        "problem": {
+          "type": "string"
+        },
+        "affectedRoles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "expectedOutcome": {
+          "type": "string"
+        }
+      }
+    },
+
+    "repoContext": {
+      "type": "object",
+      "properties": {
+        "relevantModules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "referenceFiles": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "existingPatternsToFollow": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "architectureImpact": {
+      "type": "object",
+      "required": [
+        "riskLevel",
+        "nativeRisk"
+      ],
+      "properties": {
+        "riskLevel": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "nativeRisk": {
+          "type": "boolean"
+        },
+        "touchesFirebase": {
+          "type": "boolean"
+        },
+        "touchesNavigation": {
+          "type": "boolean"
+        },
+        "touchesCloudFunctions": {
+          "type": "boolean"
+        },
+        "touchesPayments": {
+          "type": "boolean"
+        },
+        "touchesAI": {
+          "type": "boolean"
+        }
+      }
+    },
+
+    "automationScope": {
+      "type": "object",
+      "properties": {
+        "factoryCanCreate": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "factoryCanModify": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "claudeCodeOnly": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "humanApprovalRequired": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "files": {
+      "type": "object",
+      "properties": {
+        "create": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "filePath",
+              "description"
+            ],
+            "properties": {
+              "filePath": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "modify": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "filePath",
+              "reason"
+            ],
+            "properties": {
+              "filePath": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "doNotTouch": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "testingStrategy": {
+      "type": "object",
+      "properties": {
+        "testType": {
+          "type": "string"
+        },
+        "requiredMocks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "avoid": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "commands": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "factoryExecutionPlan": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxRetries": {
+          "type": "number"
+        },
+        "handoffRequired": {
+          "type": "boolean"
+        }
+      }
+    },
+
+    "claudeCodeHandoff": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "acceptanceCriteria": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

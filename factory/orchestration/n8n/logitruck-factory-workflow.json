@@ -1,0 +1,556 @@
+{
+  "name": "LogiTruck Factory — Feature Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "factory/execute",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-01",
+      "name": "Factory Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 400],
+      "webhookId": "logitruck-factory-execute"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst plan = body.implementationPlan || {};\nconst rawName = plan.featureName || body.featureName || 'unnamed-feature';\nconst featureName = rawName.toLowerCase().replace(/\\s+/g, '-').replace(/[^a-z0-9-]/g, '');\nconst tmpRoot = process.env.FACTORY_TMP_ROOT || '/tmp';\nconst timestamp = Date.now();\nconst workDir = tmpRoot + '/logitruck-' + featureName + '-' + timestamp;\nreturn [{ json: {\n  project: body.project || 'LogiTruck',\n  featureName,\n  featureArchetype: plan.featureArchetype || '',\n  executionLevel: '',\n  model: '',\n  repoUrl: body.repoUrl || '',\n  baseBranch: body.baseBranch || process.env.DEFAULT_BASE_BRANCH || 'main',\n  workDir,\n  repoDir: workDir + '/repo',\n  plan,\n  selectedBuildingBlocks: plan.selectedBuildingBlocks || [],\n  riskLevel: plan.architectureImpact && plan.architectureImpact.riskLevel || 'low',\n  testsData: {},\n  implData: {},\n  testsWritten: [],\n  filesWritten: [],\n  validationOutput: '',\n  validationPassed: false,\n  retryCount: 0,\n  maxRetries: 2,\n  retryHistory: [],\n  failureAnalysis: null,\n  patchData: null,\n  status: 'parsed',\n  handoffPath: workDir + '/handoff',\n  errors: []\n} }];"
+      },
+      "id": "node-02",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [350, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nif (data.status === 'rejected') return [{ json: data }];\nconst plan = data.plan;\nconst required = ['featureName','featureArchetype','businessIntent','repoContext','architectureImpact','automationScope','files','testingStrategy','factoryExecutionPlan','acceptanceCriteria'];\nconst validArchetypes = ['utility-feature','mobile-screen-feature','firestore-feature','cloud-function-feature','maps-tracking-feature','native-integration-feature','payments-stripe-connect-feature','ai-support-agent-feature','voice-agent-elevenlabs-feature','landing-react-vite-feature'];\nconst errors = [];\nrequired.filter(f => !plan[f]).forEach(f => errors.push('Missing required field: ' + f));\nif (!validArchetypes.includes(plan.featureArchetype)) errors.push('Invalid featureArchetype: ' + plan.featureArchetype);\nif ((!plan.files || (!plan.files.create || !plan.files.create.length)) && (!plan.files || (!plan.files.modify || !plan.files.modify.length))) errors.push('files.create or files.modify must have at least one entry');\nif (!plan.testingStrategy || !plan.testingStrategy.commands || !plan.testingStrategy.commands.length) errors.push('testingStrategy.commands must not be empty');\nif (errors.length > 0) return [{ json: { ...data, status: 'rejected', errors } }];\nreturn [{ json: { ...data, status: 'validated' } }];"
+      },
+      "id": "node-03",
+      "name": "Validate Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [600, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [{
+            "id": "cond-plan-valid",
+            "leftValue": "={{ $json.status }}",
+            "rightValue": "rejected",
+            "operator": { "type": "string", "operation": "notEquals" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-04",
+      "name": "IF Plan Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, featureName: $json.featureName, errors: $json.errors, summary: 'Plan rejected. Fix errors and retry.' }) }}",
+        "options": { "responseCode": 400 }
+      },
+      "id": "node-05",
+      "name": "Reject Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1100, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst plan = data.plan;\nconst archetype = plan.featureArchetype;\nconst risk = (plan.architectureImpact && plan.architectureImpact.riskLevel) || 'low';\nconst nativeRisk = plan.architectureImpact && plan.architectureImpact.nativeRisk === true;\nconst levelMap = {\n  'utility-feature': 'L0',\n  'landing-react-vite-feature': 'L0',\n  'mobile-screen-feature': 'L1',\n  'ai-support-agent-feature': 'L1',\n  'firestore-feature': (risk === 'high' || risk === 'critical') ? 'L2' : 'L1',\n  'cloud-function-feature': risk === 'critical' ? 'L2' : 'L1',\n  'maps-tracking-feature': nativeRisk ? 'L2' : 'L1',\n  'native-integration-feature': 'L2',\n  'payments-stripe-connect-feature': 'L2',\n  'voice-agent-elevenlabs-feature': 'L2'\n};\nconst executionLevel = levelMap[archetype] || 'L2';\nconst model = executionLevel === 'L0' ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6';\nconst maxRetries = (plan.factoryExecutionPlan && plan.factoryExecutionPlan.maxRetries != null) ? plan.factoryExecutionPlan.maxRetries : 2;\nreturn [{ json: { ...data, executionLevel, riskLevel: risk, model, maxRetries, status: 'classified' } }];"
+      },
+      "id": "node-06",
+      "name": "Classify Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 200]
+    },
+    {
+      "parameters": {
+        "command": "set -e\nWORK_DIR=\"{{ $json.workDir }}\"\nif [[ \"$WORK_DIR\" != /tmp/* ]] && [[ \"$WORK_DIR\" != /private/tmp/* ]] && [[ \"$WORK_DIR\" != /var/folders/* ]]; then\n  echo \"ERROR: workDir safety check failed\" >&2\n  exit 1\nfi\nrm -rf \"$WORK_DIR\"\nmkdir -p \"$WORK_DIR/handoff/generated-files\"\nmkdir -p \"$WORK_DIR/handoff/tests\"\nmkdir -p \"$WORK_DIR/logs\"\necho \"sandbox_ready\""
+      },
+      "id": "node-07",
+      "name": "Setup Sandbox Cmd",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1350, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('Classify Risk').first().json;\nif (cmd.exitCode !== 0) {\n  return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Setup sandbox failed: ' + cmd.stderr] } }];\n}\nreturn [{ json: { ...data, status: 'sandbox_ready' } }];"
+      },
+      "id": "node-08",
+      "name": "After Setup Sandbox",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 200]
+    },
+    {
+      "parameters": {
+        "command": "REPO_DIR=\"{{ $json.repoDir }}\"\nREPO_URL=\"{{ $json.repoUrl }}\"\nBASE_BRANCH=\"{{ $json.baseBranch }}\"\ngit clone --depth 1 --branch \"$BASE_BRANCH\" \"$REPO_URL\" \"$REPO_DIR\" 2>&1 | tail -5\necho \"clone_complete\""
+      },
+      "id": "node-09",
+      "name": "Clone Repository Cmd",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1850, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('After Setup Sandbox').first().json;\nif (cmd.exitCode !== 0) {\n  return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Clone failed: ' + cmd.stderr] } }];\n}\nreturn [{ json: { ...data, status: 'cloned' } }];"
+      },
+      "id": "node-10",
+      "name": "After Clone Repo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst plan = data.plan;\nconst blocks = (plan.selectedBuildingBlocks || []).map(function(b) { return b.name || b; }).join(', ');\nconst contextBundle = [\n  '# IMPLEMENTATION PLAN\\n' + JSON.stringify(plan, null, 2),\n  '# ARCHETYPE: ' + plan.featureArchetype,\n  '# EXECUTION LEVEL: ' + data.executionLevel,\n  '# RISK LEVEL: ' + data.riskLevel,\n  '# BUILDING BLOCKS: ' + (blocks || 'none'),\n  '# FILES TO CREATE:\\n' + JSON.stringify((plan.files && plan.files.create) || [], null, 2),\n  '# FILES TO MODIFY:\\n' + JSON.stringify((plan.files && plan.files.modify) || [], null, 2),\n  '# DO NOT TOUCH:\\n' + JSON.stringify((plan.files && plan.files.doNotTouch) || [], null, 2),\n  '# TESTING STRATEGY:\\n' + JSON.stringify(plan.testingStrategy, null, 2),\n  '# ACCEPTANCE CRITERIA:\\n' + (plan.acceptanceCriteria || []).map(function(c) { return '- ' + c; }).join('\\n')\n].join('\\n\\n---\\n\\n');\nreturn [{ json: { ...data, contextBundle, status: 'context_loaded' } }];"
+      },
+      "id": "node-11",
+      "name": "Load Context Bundle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2350, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst plan = data.plan;\nconst acceptanceCriteria = (plan.acceptanceCriteria || []).map(function(c) { return '- ' + c; }).join('\\n');\nconst patterns = (plan.repoContext && plan.repoContext.existingPatternsToFollow || []).join('\\n');\nconst filesToCreate = JSON.stringify((plan.files && plan.files.create) || [], null, 2);\nconst testingStrategy = JSON.stringify(plan.testingStrategy, null, 2);\nconst userContent = 'Generate Jest tests for this feature.\\n\\nIMPLEMENTATION PLAN:\\n' + JSON.stringify(plan, null, 2) + '\\n\\nFILES TO CREATE:\\n' + filesToCreate + '\\n\\nTESTING STRATEGY:\\n' + testingStrategy + '\\n\\nACCEPTANCE CRITERIA:\\n' + acceptanceCriteria + '\\n\\nEXISTING PATTERNS:\\n' + patterns + '\\n\\nRULES:\\n- Pure utilities: import directly, no renderHook, no React Testing Library\\n- React hooks: use renderHook from @testing-library/react-native\\n- Tests must FAIL before implementation exists, PASS after\\n- No real Firebase/Stripe/OpenAI/ElevenLabs calls — use jest.mock()\\n- Test edge cases and error paths\\n- Use describe/it blocks with clear readable names\\n\\nOutput this JSON structure ONLY — no markdown, no code blocks, no explanation:\\n{\"tests\":[{\"filePath\":\"src/utils/__tests__/example.test.ts\",\"content\":\"import { example } from \\\"../example\\\";\\ndescribe(...)\"}]}';\nconst apiRequestBody = {\n  model: data.model,\n  max_tokens: 8096,\n  system: 'You are the LogiTruck Factory test generator. Return ONLY valid JSON — no markdown, no code blocks, no explanation.',\n  messages: [{ role: 'user', content: userContent }]\n};\nreturn [{ json: { ...data, apiRequestBody } }];"
+      },
+      "id": "node-12",
+      "name": "Build Tests Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2600, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiRequestBody }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "node-13",
+      "name": "Generate Tests API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2850, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Load Context Bundle').first().json;\nlet tests = { tests: [] };\ntry {\n  const raw = (response.content && response.content[0] && response.content[0].text) || '{}';\n  const cleaned = raw.replace(/^```json\\s*/,'').replace(/\\s*```$/,'').trim();\n  tests = JSON.parse(cleaned);\n  if (!Array.isArray(tests.tests)) tests = { tests: [] };\n} catch(e) {\n  return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Failed to parse tests response: ' + e.message] } }];\n}\nreturn [{ json: { ...data, testsData: tests, status: 'tests_generated' } }];"
+      },
+      "id": "node-14",
+      "name": "Parse Tests Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst data = $input.first().json;\nconst tests = (data.testsData && data.testsData.tests) || [];\nconst repoDir = path.resolve(data.repoDir);\nconst written = [];\nfor (const test of tests) {\n  if (!test.filePath || !test.content) continue;\n  const resolved = path.resolve(repoDir, test.filePath);\n  if (!resolved.startsWith(repoDir + path.sep) && resolved !== repoDir) {\n    return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Path traversal blocked: ' + test.filePath] } }];\n  }\n  fs.mkdirSync(path.dirname(resolved), { recursive: true });\n  fs.writeFileSync(resolved, test.content, 'utf8');\n  written.push(test.filePath);\n}\nreturn [{ json: { ...data, testsWritten: written, status: 'tests_written' } }];"
+      },
+      "id": "node-15",
+      "name": "Write Tests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3350, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst plan = data.plan;\nconst filesToCreate = JSON.stringify((plan.files && plan.files.create) || [], null, 2);\nconst filesToModify = JSON.stringify((plan.files && plan.files.modify) || [], null, 2);\nconst doNotTouch = JSON.stringify((plan.files && plan.files.doNotTouch) || [], null, 2);\nconst patterns = (plan.repoContext && plan.repoContext.existingPatternsToFollow || []).join('\\n');\nconst antiPatterns = (plan.repoContext && plan.repoContext.knownAntiPatternsToAvoid || []).join('\\n');\nconst tests = JSON.stringify(data.testsData, null, 2);\nconst userContent = 'Generate implementation files for this feature.\\n\\nIMPLEMENTATION PLAN:\\n' + JSON.stringify(plan, null, 2) + '\\n\\nGENERATED TESTS — make these pass:\\n' + tests + '\\n\\nFILES TO CREATE:\\n' + filesToCreate + '\\n\\nFILES TO MODIFY:\\n' + filesToModify + '\\n\\nDO NOT TOUCH:\\n' + doNotTouch + '\\n\\nEXISTING PATTERNS TO FOLLOW:\\n' + patterns + '\\n\\nANTI-PATTERNS TO AVOID:\\n' + antiPatterns + '\\n\\nRULES:\\n- Reuse existing patterns from repoContext\\n- Avoid new dependencies unless the plan explicitly allows them\\n- Pure functions must be deterministic and side-effect free\\n- Use explicit TypeScript types and explicit return types\\n- No any types\\n- No hidden Firebase/network/native calls in utilities\\n- This is a sandbox integration candidate only\\n\\nOutput this JSON structure ONLY — no markdown, no code blocks:\\n{\"files\":[{\"filePath\":\"src/utils/example.ts\",\"content\":\"export ...\"}]}';\nconst apiRequestBody = {\n  model: data.model,\n  max_tokens: 8096,\n  system: 'You are the LogiTruck Factory implementation generator. Return ONLY valid JSON — no markdown, no code blocks, no explanation.',\n  messages: [{ role: 'user', content: userContent }]\n};\nreturn [{ json: { ...data, apiRequestBody } }];"
+      },
+      "id": "node-16",
+      "name": "Build Implementation Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3600, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiRequestBody }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "node-17",
+      "name": "Generate Implementation API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [3850, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Write Tests').first().json;\nlet impl = { files: [] };\ntry {\n  const raw = (response.content && response.content[0] && response.content[0].text) || '{}';\n  const cleaned = raw.replace(/^```json\\s*/,'').replace(/\\s*```$/,'').trim();\n  impl = JSON.parse(cleaned);\n  if (!Array.isArray(impl.files)) impl = { files: [] };\n} catch(e) {\n  return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Failed to parse implementation: ' + e.message] } }];\n}\nreturn [{ json: { ...data, implData: impl, status: 'implementation_generated' } }];"
+      },
+      "id": "node-18",
+      "name": "Parse Implementation Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst data = $input.first().json;\nconst files = (data.implData && data.implData.files) || [];\nconst doNotTouch = (data.plan.files && data.plan.files.doNotTouch) || [];\nconst repoDir = path.resolve(data.repoDir);\nconst written = [];\nfor (const file of files) {\n  if (!file.filePath || !file.content) continue;\n  if (doNotTouch.some(function(p) { return file.filePath.includes(p); })) {\n    return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Attempted to write protected file: ' + file.filePath] } }];\n  }\n  const resolved = path.resolve(repoDir, file.filePath);\n  if (!resolved.startsWith(repoDir + path.sep) && resolved !== repoDir) {\n    return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Path traversal blocked: ' + file.filePath] } }];\n  }\n  fs.mkdirSync(path.dirname(resolved), { recursive: true });\n  fs.writeFileSync(resolved, file.content, 'utf8');\n  written.push(file.filePath);\n}\nreturn [{ json: { ...data, filesWritten: written, status: 'files_written' } }];"
+      },
+      "id": "node-19",
+      "name": "Write Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4350, 200]
+    },
+    {
+      "parameters": {
+        "command": "REPO_DIR=\"{{ $json.repoDir }}\"\nARCHETYPE=\"{{ $json.featureArchetype }}\"\ncd \"$REPO_DIR\"\nNODE_ENV=development npm install --include=dev --legacy-peer-deps 2>&1 | tail -3\nEXIT_CODE=0\nif [[ \"$ARCHETYPE\" == \"landing-react-vite-feature\" ]]; then\n  npm run build 2>&1 || EXIT_CODE=$?\nelse\n  ./node_modules/.bin/tsc --noEmit 2>&1 || EXIT_CODE=$?\n  ./node_modules/.bin/jest --watchAll=false --forceExit --passWithNoTests 2>&1 || EXIT_CODE=$?\nfi\necho \"FACTORY_EXIT_CODE=$EXIT_CODE\"\nexit $EXIT_CODE"
+      },
+      "id": "node-20",
+      "name": "Run Validation Cmd",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [4600, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('Write Files').first().json;\nconst passed = cmd.exitCode === 0;\nconst output = 'VALIDATION ATTEMPT 1\\nEXIT_CODE: ' + cmd.exitCode + '\\n\\nSTDOUT:\\n' + cmd.stdout + '\\n\\nSTDERR:\\n' + cmd.stderr;\nreturn [{ json: { ...data, validationOutput: output, validationPassed: passed, status: passed ? 'validation_passed' : 'validation_failed' } }];"
+      },
+      "id": "node-21",
+      "name": "Parse Validation Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [4850, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [{
+            "id": "cond-validation-passed",
+            "leftValue": "={{ $json.validationPassed }}",
+            "rightValue": true,
+            "operator": { "type": "boolean", "operation": "true" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-22",
+      "name": "IF Validation Passed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [5100, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst filesWritten = JSON.stringify(data.filesWritten || []);\nconst testsWritten = JSON.stringify(data.testsWritten || []);\nconst userContent = 'Analyze this validation failure and classify it.\\n\\nVALIDATION OUTPUT:\\n' + data.validationOutput + '\\n\\nFILES WRITTEN:\\n' + filesWritten + '\\n\\nTESTS WRITTEN:\\n' + testsWritten + '\\n\\nRETRY COUNT: ' + data.retryCount + ' / ' + data.maxRetries + '\\n\\nSAFE TO RETRY (retryAllowed: true):\\n- TypeScript errors\\n- Missing imports\\n- Failing isolated tests\\n- Wrong file paths\\n- Mock setup errors\\n- Formatting issues\\n- Simple logic mismatches\\n\\nMUST ESCALATE (retryAllowed: false):\\n- Native build failure\\n- Dependency conflict\\n- Expo plugin issue\\n- Stripe/payment production errors\\n- Firestore security rules violations\\n- AI runtime orchestration errors\\n- Unknown runtime errors\\n\\nOutput this JSON ONLY — no markdown, no code blocks:\\n{\"retryAllowed\":true,\"failureType\":\"typescript\",\"rootCause\":\"...\",\"patchInstructions\":\"...\"}';\nconst apiRequestBody = {\n  model: 'claude-haiku-4-5-20251001',\n  max_tokens: 2048,\n  system: 'You are the LogiTruck Factory failure analyzer. Return ONLY valid JSON — no markdown.',\n  messages: [{ role: 'user', content: userContent }]\n};\nreturn [{ json: { ...data, apiRequestBody } }];"
+      },
+      "id": "node-23",
+      "name": "Build Failure Analysis Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5350, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiRequestBody }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "node-24",
+      "name": "Analyze Failure API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [5600, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Parse Validation Result').first().json;\nlet analysis = { retryAllowed: false, failureType: 'unknown', rootCause: 'Could not parse analysis', patchInstructions: '' };\ntry {\n  const raw = (response.content && response.content[0] && response.content[0].text) || '{}';\n  const cleaned = raw.replace(/^```json\\s*/,'').replace(/\\s*```$/,'').trim();\n  analysis = JSON.parse(cleaned);\n} catch(e) {\n  analysis.rootCause = 'Parse error: ' + e.message;\n}\nconst retryAllowed = analysis.retryAllowed === true && data.retryCount < data.maxRetries;\nreturn [{ json: { ...data, failureAnalysis: analysis, retryAllowed, status: 'failure_analyzed' } }];"
+      },
+      "id": "node-25",
+      "name": "Parse Failure Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [5850, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [{
+            "id": "cond-retry-allowed",
+            "leftValue": "={{ $json.retryAllowed }}",
+            "rightValue": true,
+            "operator": { "type": "boolean", "operation": "true" }
+          }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-26",
+      "name": "IF Retry Allowed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [6100, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst userContent = 'Generate patches to fix these validation errors.\\n\\nVALIDATION OUTPUT:\\n' + data.validationOutput + '\\n\\nFAILURE ANALYSIS:\\n' + JSON.stringify(data.failureAnalysis, null, 2) + '\\n\\nIMPLEMENTATION PLAN:\\n' + JSON.stringify(data.plan, null, 2) + '\\n\\nFILES WRITTEN:\\n' + JSON.stringify(data.filesWritten || []) + '\\n\\nTESTS WRITTEN:\\n' + JSON.stringify(data.testsWritten || []) + '\\n\\nDO NOT TOUCH:\\n' + JSON.stringify((data.plan.files && data.plan.files.doNotTouch) || []) + '\\n\\nRULES:\\n- Only fix what is broken\\n- Do not introduce new dependencies\\n- Return COMPLETE file content for each patched file (not diffs)\\n- Match the original file intent from the plan\\n\\nOutput this JSON ONLY — no markdown, no code blocks:\\n{\"patches\":[{\"filePath\":\"src/utils/example.ts\",\"content\":\"export ...\"}],\"reason\":\"what was fixed\"}';\nconst apiRequestBody = {\n  model: data.model,\n  max_tokens: 8096,\n  system: 'You are the LogiTruck Factory patch generator. Return ONLY valid JSON — no markdown, no code blocks, no explanation.',\n  messages: [{ role: 'user', content: userContent }]\n};\nreturn [{ json: { ...data, apiRequestBody } }];"
+      },
+      "id": "node-27",
+      "name": "Build Patch Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6350, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiRequestBody }}",
+        "options": { "timeout": 120000 }
+      },
+      "id": "node-28",
+      "name": "Generate Patch API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [6600, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Parse Failure Analysis').first().json;\nlet patch = { patches: [], reason: 'No patches generated' };\ntry {\n  const raw = (response.content && response.content[0] && response.content[0].text) || '{}';\n  const cleaned = raw.replace(/^```json\\s*/,'').replace(/\\s*```$/,'').trim();\n  patch = JSON.parse(cleaned);\n  if (!Array.isArray(patch.patches)) patch = { patches: [], reason: 'Invalid patch format' };\n} catch(e) {\n  patch = { patches: [], reason: 'Parse error: ' + e.message };\n}\nreturn [{ json: { ...data, patchData: patch, status: 'patch_generated' } }];"
+      },
+      "id": "node-29",
+      "name": "Parse Patch Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [6850, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst data = $input.first().json;\nconst patches = (data.patchData && data.patchData.patches) || [];\nconst doNotTouch = (data.plan.files && data.plan.files.doNotTouch) || [];\nconst repoDir = path.resolve(data.repoDir);\nconst patchedFiles = [];\nfor (const patch of patches) {\n  if (!patch.filePath || !patch.content) continue;\n  if (doNotTouch.some(function(p) { return patch.filePath.includes(p); })) continue;\n  const resolved = path.resolve(repoDir, patch.filePath);\n  if (!resolved.startsWith(repoDir + path.sep) && resolved !== repoDir) continue;\n  fs.mkdirSync(path.dirname(resolved), { recursive: true });\n  fs.writeFileSync(resolved, patch.content, 'utf8');\n  patchedFiles.push(patch.filePath);\n}\nconst retryEntry = {\n  attempt: data.retryCount + 1,\n  failureType: data.failureAnalysis && data.failureAnalysis.failureType,\n  rootCause: data.failureAnalysis && data.failureAnalysis.rootCause,\n  patchedFiles,\n  reason: data.patchData && data.patchData.reason\n};\nreturn [{ json: { ...data, retryCount: data.retryCount + 1, retryHistory: [...data.retryHistory, retryEntry], status: 'patch_applied' } }];"
+      },
+      "id": "node-30",
+      "name": "Apply Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7100, 200]
+    },
+    {
+      "parameters": {
+        "command": "REPO_DIR=\"{{ $json.repoDir }}\"\nARCHETYPE=\"{{ $json.featureArchetype }}\"\ncd \"$REPO_DIR\"\nEXIT_CODE=0\nif [[ \"$ARCHETYPE\" == \"landing-react-vite-feature\" ]]; then\n  npm run build 2>&1 || EXIT_CODE=$?\nelse\n  ./node_modules/.bin/tsc --noEmit 2>&1 || EXIT_CODE=$?\n  ./node_modules/.bin/jest --watchAll=false --forceExit --passWithNoTests 2>&1 || EXIT_CODE=$?\nfi\necho \"FACTORY_EXIT_CODE=$EXIT_CODE\"\nexit $EXIT_CODE"
+      },
+      "id": "node-31",
+      "name": "Run Validation Retry Cmd",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [7350, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('Apply Patch').first().json;\nconst passed = cmd.exitCode === 0;\nconst output = 'VALIDATION ATTEMPT ' + data.retryCount + '\\nEXIT_CODE: ' + cmd.exitCode + '\\n\\nSTDOUT:\\n' + cmd.stdout + '\\n\\nSTDERR:\\n' + cmd.stderr;\nreturn [{ json: { ...data, validationOutput: output, validationPassed: passed, status: passed ? 'retry_passed' : 'retry_failed' } }];"
+      },
+      "id": "node-32",
+      "name": "Parse Retry Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7600, 200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst data = $input.first().json;\nconst h = data.handoffPath;\nfs.mkdirSync(h + '/generated-files', { recursive: true });\nfs.mkdirSync(h + '/tests', { recursive: true });\n\nfs.writeFileSync(h + '/IMPLEMENTATION_PLAN.json', JSON.stringify(data.plan, null, 2), 'utf8');\nfs.writeFileSync(h + '/validation-output.txt', data.validationOutput || 'No validation output.', 'utf8');\n\nconst retrySummary = data.retryHistory && data.retryHistory.length\n  ? '# Retry Summary\\n\\nTotal Retries: ' + data.retryCount + '\\n\\n' + data.retryHistory.map(function(r, i) {\n      return '## Attempt ' + (i+1) + '\\n- Failure Type: ' + r.failureType + '\\n- Root Cause: ' + r.rootCause + '\\n- Patched: ' + ((r.patchedFiles || []).join(', ') || 'none') + '\\n- Reason: ' + r.reason;\n    }).join('\\n\\n')\n  : '# Retry Summary\\n\\nNo retries performed.';\nfs.writeFileSync(h + '/retry-summary.md', retrySummary, 'utf8');\n\nconst riskNotes = '# Risk Notes\\n\\n- Feature: ' + data.featureName + '\\n- Archetype: ' + data.featureArchetype + '\\n- Execution Level: ' + data.executionLevel + '\\n- Risk Level: ' + data.riskLevel + '\\n- Validation Passed: ' + data.validationPassed + '\\n- Retries: ' + data.retryCount + ' / ' + data.maxRetries + '\\n\\n## Errors\\n' + (data.errors && data.errors.length ? data.errors.map(function(e) { return '- ' + e; }).join('\\n') : 'None');\nfs.writeFileSync(h + '/risk-notes.md', riskNotes, 'utf8');\n\nconst plan = data.plan;\nconst steps = (plan.claudeCodeIntegrationPlan && plan.claudeCodeIntegrationPlan.steps) || (plan.claudeCodeHandoff && plan.claudeCodeHandoff.tasks) || ['1. Review generated files', '2. Apply to production repo', '3. Run full test suite', '4. Validate runtime behavior', '5. Commit if all checks pass'];\nconst claudeSteps = '# Claude Code Integration Steps\\n\\n' + steps.map(function(s,i) { return (i+1) + '. ' + s; }).join('\\n') + '\\n\\n## Files Generated (sandbox only)\\n' + ((data.filesWritten || []).map(function(f) { return '- ' + f; }).join('\\n') || 'None') + '\\n\\n## Tests Generated (sandbox only)\\n' + ((data.testsWritten || []).map(function(f) { return '- ' + f; }).join('\\n') || 'None') + '\\n\\n## Validation: ' + (data.validationPassed ? 'PASSED' : 'FAILED') + '\\n\\n> IMPORTANT: Factory output is a sandbox candidate only. Claude Code owns integration and production commit.';\nfs.writeFileSync(h + '/claude-integration-steps.md', claudeSteps, 'utf8');\n\nconst rollbackSteps = (plan.rollbackPlan && plan.rollbackPlan.steps && plan.rollbackPlan.steps.length)\n  ? plan.rollbackPlan.steps.map(function(s,i) { return (i+1) + '. ' + s; }).join('\\n')\n  : '1. Delete sandbox directory — no production changes were made.\\n   Path: ' + data.workDir;\nfs.writeFileSync(h + '/rollback-plan.md', '# Rollback Plan\\n\\n' + rollbackSteps, 'utf8');\n\nlet finalStatus = 'ready';\nif (!data.validationPassed && data.retryCount > 0) finalStatus = 'needs_fix';\nif (!data.validationPassed && data.retryAllowed === false) finalStatus = 'escalated';\nif (data.status === 'failure_analyzed' && !data.retryAllowed) finalStatus = 'escalated';\n\nconst manifest = {\n  featureName: data.featureName,\n  featureArchetype: data.featureArchetype,\n  executionLevel: data.executionLevel,\n  riskLevel: data.riskLevel,\n  status: finalStatus,\n  filesWritten: data.filesWritten || [],\n  testsWritten: data.testsWritten || [],\n  validationPassed: data.validationPassed || false,\n  retryCount: data.retryCount,\n  handoffPath: h,\n  timestamp: new Date().toISOString()\n};\nfs.writeFileSync(h + '/manifest.json', JSON.stringify(manifest, null, 2), 'utf8');\nreturn [{ json: { ...data, finalStatus, manifest, status: 'handoff_packaged' } }];"
+      },
+      "id": "node-33",
+      "name": "Package Handoff",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [7850, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.finalStatus, featureName: $json.featureName, featureArchetype: $json.featureArchetype, executionLevel: $json.executionLevel, workDir: $json.workDir, repoDir: $json.repoDir, handoffPath: $json.handoffPath, filesGenerated: $json.filesWritten, testsGenerated: $json.testsWritten, validationPassed: $json.validationPassed, retryCount: $json.retryCount, errors: $json.errors, summary: 'Factory run complete. Status: ' + $json.finalStatus + '. Validation: ' + ($json.validationPassed ? 'PASSED' : 'FAILED') + '. Files: ' + ($json.filesWritten || []).length + '. Tests: ' + ($json.testsWritten || []).length + '.' }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "node-34",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [8100, 200]
+    }
+  ],
+  "connections": {
+    "Factory Webhook": {
+      "main": [[{ "node": "Parse Request", "type": "main", "index": 0 }]]
+    },
+    "Parse Request": {
+      "main": [[{ "node": "Validate Plan", "type": "main", "index": 0 }]]
+    },
+    "Validate Plan": {
+      "main": [[{ "node": "IF Plan Valid", "type": "main", "index": 0 }]]
+    },
+    "IF Plan Valid": {
+      "main": [
+        [{ "node": "Classify Risk", "type": "main", "index": 0 }],
+        [{ "node": "Reject Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Classify Risk": {
+      "main": [[{ "node": "Setup Sandbox Cmd", "type": "main", "index": 0 }]]
+    },
+    "Setup Sandbox Cmd": {
+      "main": [[{ "node": "After Setup Sandbox", "type": "main", "index": 0 }]]
+    },
+    "After Setup Sandbox": {
+      "main": [[{ "node": "Clone Repository Cmd", "type": "main", "index": 0 }]]
+    },
+    "Clone Repository Cmd": {
+      "main": [[{ "node": "After Clone Repo", "type": "main", "index": 0 }]]
+    },
+    "After Clone Repo": {
+      "main": [[{ "node": "Load Context Bundle", "type": "main", "index": 0 }]]
+    },
+    "Load Context Bundle": {
+      "main": [[{ "node": "Build Tests Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Tests Prompt": {
+      "main": [[{ "node": "Generate Tests API", "type": "main", "index": 0 }]]
+    },
+    "Generate Tests API": {
+      "main": [[{ "node": "Parse Tests Response", "type": "main", "index": 0 }]]
+    },
+    "Parse Tests Response": {
+      "main": [[{ "node": "Write Tests", "type": "main", "index": 0 }]]
+    },
+    "Write Tests": {
+      "main": [[{ "node": "Build Implementation Prompt", "type": "main", "index": 0 }]]
+    },
+    "Build Implementation Prompt": {
+      "main": [[{ "node": "Generate Implementation API", "type": "main", "index": 0 }]]
+    },
+    "Generate Implementation API": {
+      "main": [[{ "node": "Parse Implementation Response", "type": "main", "index": 0 }]]
+    },
+    "Parse Implementation Response": {
+      "main": [[{ "node": "Write Files", "type": "main", "index": 0 }]]
+    },
+    "Write Files": {
+      "main": [[{ "node": "Run Validation Cmd", "type": "main", "index": 0 }]]
+    },
+    "Run Validation Cmd": {
+      "main": [[{ "node": "Parse Validation Result", "type": "main", "index": 0 }]]
+    },
+    "Parse Validation Result": {
+      "main": [[{ "node": "IF Validation Passed", "type": "main", "index": 0 }]]
+    },
+    "IF Validation Passed": {
+      "main": [
+        [{ "node": "Package Handoff", "type": "main", "index": 0 }],
+        [{ "node": "Build Failure Analysis Prompt", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Failure Analysis Prompt": {
+      "main": [[{ "node": "Analyze Failure API", "type": "main", "index": 0 }]]
+    },
+    "Analyze Failure API": {
+      "main": [[{ "node": "Parse Failure Analysis", "type": "main", "index": 0 }]]
+    },
+    "Parse Failure Analysis": {
+      "main": [[{ "node": "IF Retry Allowed", "type": "main", "index": 0 }]]
+    },
+    "IF Retry Allowed": {
+      "main": [
+        [{ "node": "Build Patch Prompt", "type": "main", "index": 0 }],
+        [{ "node": "Package Handoff", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Patch Prompt": {
+      "main": [[{ "node": "Generate Patch API", "type": "main", "index": 0 }]]
+    },
+    "Generate Patch API": {
+      "main": [[{ "node": "Parse Patch Response", "type": "main", "index": 0 }]]
+    },
+    "Parse Patch Response": {
+      "main": [[{ "node": "Apply Patch", "type": "main", "index": 0 }]]
+    },
+    "Apply Patch": {
+      "main": [[{ "node": "Run Validation Retry Cmd", "type": "main", "index": 0 }]]
+    },
+    "Run Validation Retry Cmd": {
+      "main": [[{ "node": "Parse Retry Result", "type": "main", "index": 0 }]]
+    },
+    "Parse Retry Result": {
+      "main": [[{ "node": "Package Handoff", "type": "main", "index": 0 }]]
+    },
+    "Package Handoff": {
+      "main": [[{ "node": "Return Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "id": "logitruck-factory-workflow-v1",
+  "meta": {
+    "templateCredsSetupCompleted": false,
+    "instanceId": "REPLACE_WITH_YOUR_N8N_INSTANCE_ID"
+  },
+  "tags": [
+    { "name": "logitruck-factory" }
+  ]
+}

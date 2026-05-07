@@ -1,0 +1,561 @@
+{
+  "name": "LogiTruck Factory \u2014 Feature Generation V1 Importable",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "factory/execute",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-01-webhook",
+      "name": "Factory Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        100,
+        300
+      ],
+      "webhookId": "logitruck-factory-execute"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json;\nconst plan = body.implementationPlan || {};\nconst rawName = plan.featureName || body.featureName || 'unnamed-feature';\nconst featureName = rawName.toLowerCase().replace(/\\s+/g, '-').replace(/[^a-z0-9-]/g, '');\nconst tmpRoot = process.env.FACTORY_TMP_ROOT || '/tmp';\nconst timestamp = Date.now();\nconst workDir = `${tmpRoot}/logitruck-${featureName}-${timestamp}`;\nreturn [{\n  json: {\n    project: body.project || 'LogiTruck',\n    featureName,\n    featureArchetype: plan.featureArchetype || '',\n    repoUrl: body.repoUrl || '',\n    baseBranch: body.baseBranch || process.env.DEFAULT_BASE_BRANCH || 'main',\n    workDir,\n    repoDir: `${workDir}/repo`,\n    handoffPath: `${workDir}/handoff`,\n    plan,\n    riskLevel: plan.architectureImpact?.riskLevel || 'low',\n    executionLevel: '',\n    model: '',\n    testsData: { tests: [] },\n    implData: { files: [] },\n    testsWritten: [],\n    filesWritten: [],\n    validationOutput: '',\n    validationPassed: false,\n    status: 'parsed',\n    errors: []\n  }\n}];"
+      },
+      "id": "node-02-parse-request",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        350,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst plan = data.plan || {};\nconst required = ['featureName','featureArchetype','businessIntent','repoContext','architectureImpact','automationScope','files','testingStrategy','factoryExecutionPlan','acceptanceCriteria'];\nconst validArchetypes = ['utility-feature','mobile-screen-feature','firestore-feature','cloud-function-feature','maps-tracking-feature','native-integration-feature','payments-stripe-connect-feature','ai-support-agent-feature','voice-agent-elevenlabs-feature','landing-react-vite-feature'];\nconst errors = [];\nfor (const f of required) if (!plan[f]) errors.push(`Missing required field: ${f}`);\nif (!validArchetypes.includes(plan.featureArchetype)) errors.push(`Invalid featureArchetype: ${plan.featureArchetype}`);\nif (!plan.files?.create?.length && !plan.files?.modify?.length) errors.push('files.create or files.modify must have at least one entry');\nif (errors.length) return [{ json: { ...data, status: 'rejected', errors } }];\nreturn [{ json: { ...data, status: 'validated' } }];"
+      },
+      "id": "node-03-validate-plan",
+      "name": "Validate Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "valid",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "rejected",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-04-if-valid",
+      "name": "IF Plan Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, featureName: $json.featureName, errors: $json.errors }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "node-05-reject",
+      "name": "Reject Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst archetype = data.plan.featureArchetype;\nconst risk = data.plan.architectureImpact?.riskLevel || 'low';\nconst nativeRisk = data.plan.architectureImpact?.nativeRisk === true;\nconst levelMap = {\n  'utility-feature': 'L0',\n  'landing-react-vite-feature': 'L0',\n  'mobile-screen-feature': 'L1',\n  'ai-support-agent-feature': 'L1',\n  'firestore-feature': (risk === 'high' || risk === 'critical') ? 'L2' : 'L1',\n  'cloud-function-feature': risk === 'critical' ? 'L2' : 'L1',\n  'maps-tracking-feature': nativeRisk ? 'L2' : 'L1',\n  'native-integration-feature': 'L2',\n  'payments-stripe-connect-feature': 'L2',\n  'voice-agent-elevenlabs-feature': 'L2'\n};\nconst executionLevel = levelMap[archetype] || 'L2';\nconst model = executionLevel === 'L0' ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6';\nreturn [{ json: { ...data, executionLevel, riskLevel: risk, model, status: 'classified' } }];"
+      },
+      "id": "node-06-classify",
+      "name": "Classify Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "set -e\nWORK_DIR=\"{{ $json.workDir }}\"\ncase \"$WORK_DIR\" in\n  /tmp/*|/private/tmp/*|/var/folders/*) ;;\n  *) echo \"ERROR: unsafe workDir: $WORK_DIR\" >&2; exit 1 ;;\nesac\nrm -rf \"$WORK_DIR\"\nmkdir -p \"$WORK_DIR/handoff/generated-files\" \"$WORK_DIR/handoff/tests\" \"$WORK_DIR/logs\"\necho \"sandbox_ready\"\n"
+      },
+      "id": "node-07-setup",
+      "name": "Setup Sandbox",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1350,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('Classify Risk').first().json;\nif (cmd.exitCode !== 0) return [{ json: { ...data, status: 'error', errors: [...data.errors, cmd.stderr || 'Setup failed'] } }];\nreturn [{ json: { ...data, status: 'sandbox_ready' } }];"
+      },
+      "id": "node-08-after-setup",
+      "name": "After Setup",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "set -e\ngit clone --depth 1 --branch \"{{ $json.baseBranch }}\" \"{{ $json.repoUrl }}\" \"{{ $json.repoDir }}\"\necho \"clone_complete\"\n"
+      },
+      "id": "node-09-clone",
+      "name": "Clone Repo",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1850,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('After Setup').first().json;\nif (cmd.exitCode !== 0) return [{ json: { ...data, status: 'error', errors: [...data.errors, cmd.stderr || 'Clone failed'] } }];\nreturn [{ json: { ...data, status: 'cloned' } }];"
+      },
+      "id": "node-10-after-clone",
+      "name": "After Clone",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $json.model, max_tokens: 8096, system: 'You are the LogiTruck Factory test generator. Return ONLY valid JSON.', messages: [{ role: 'user', content: 'Generate Jest tests for this implementation plan. Return JSON only with shape {\"tests\":[{\"filePath\":\"...\",\"content\":\"...\"}]}\\n\\nPLAN:\\n' + JSON.stringify($json.plan, null, 2) }] }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-11-generate-tests",
+      "name": "Generate Tests API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2350,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('After Clone').first().json;\nlet tests = { tests: [] };\ntry {\n  const raw = response.content?.[0]?.text || '{}';\n  const cleaned = raw.replace(/^```json\\s*/, '').replace(/\\s*```$/, '').trim();\n  tests = JSON.parse(cleaned);\n  if (!Array.isArray(tests.tests)) tests = { tests: [] };\n} catch (e) {\n  return [{ json: { ...data, status: 'error', errors: [...data.errors, `Failed to parse tests: ${e.message}`] } }];\n}\nreturn [{ json: { ...data, testsData: tests, status: 'tests_generated' } }];"
+      },
+      "id": "node-12-parse-tests",
+      "name": "Parse Tests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2600,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst data = $input.first().json;\nconst repoDir = path.resolve(data.repoDir);\nconst written = [];\nfor (const t of data.testsData.tests || []) {\n  if (!t.filePath || !t.content) continue;\n  const fp = path.resolve(repoDir, t.filePath);\n  if (!fp.startsWith(repoDir + path.sep)) throw new Error(`Path blocked: ${t.filePath}`);\n  fs.mkdirSync(path.dirname(fp), { recursive: true });\n  fs.writeFileSync(fp, t.content, 'utf8');\n  written.push(t.filePath);\n}\nreturn [{ json: { ...data, testsWritten: written, status: 'tests_written' } }];"
+      },
+      "id": "node-13-write-tests",
+      "name": "Write Tests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2850,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $json.model, max_tokens: 8096, system: 'You are the LogiTruck Factory implementation generator. Return ONLY valid JSON.', messages: [{ role: 'user', content: 'Generate implementation files to satisfy this implementation plan and tests. Return JSON only with shape {\"files\":[{\"filePath\":\"...\",\"content\":\"...\"}]}\\n\\nPLAN:\\n' + JSON.stringify($json.plan, null, 2) + '\\n\\nTESTS:\\n' + JSON.stringify($json.testsData, null, 2) }] }) }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "node-14-generate-implementation",
+      "name": "Generate Implementation API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        3100,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Write Tests').first().json;\nlet impl = { files: [] };\ntry {\n  const raw = response.content?.[0]?.text || '{}';\n  const cleaned = raw.replace(/^```json\\s*/, '').replace(/\\s*```$/, '').trim();\n  impl = JSON.parse(cleaned);\n  if (!Array.isArray(impl.files)) impl = { files: [] };\n} catch (e) {\n  return [{ json: { ...data, status: 'error', errors: [...data.errors, `Failed to parse implementation: ${e.message}`] } }];\n}\nreturn [{ json: { ...data, implData: impl, status: 'implementation_generated' } }];"
+      },
+      "id": "node-15-parse-impl",
+      "name": "Parse Implementation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3350,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst data = $input.first().json;\nconst repoDir = path.resolve(data.repoDir);\nconst doNotTouch = data.plan.files?.doNotTouch || [];\nconst written = [];\nfor (const f of data.implData.files || []) {\n  if (!f.filePath || !f.content) continue;\n  if (doNotTouch.some(p => f.filePath.includes(p))) throw new Error(`Protected file blocked: ${f.filePath}`);\n  const fp = path.resolve(repoDir, f.filePath);\n  if (!fp.startsWith(repoDir + path.sep)) throw new Error(`Path blocked: ${f.filePath}`);\n  fs.mkdirSync(path.dirname(fp), { recursive: true });\n  fs.writeFileSync(fp, f.content, 'utf8');\n  written.push(f.filePath);\n}\nreturn [{ json: { ...data, filesWritten: written, status: 'files_written' } }];"
+      },
+      "id": "node-16-write-files",
+      "name": "Write Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd \"{{ $json.repoDir }}\"\nNODE_ENV=development npm install --include=dev --legacy-peer-deps 2>&1 | tail -5\nEXIT_CODE=0\nif [[ \"{{ $json.featureArchetype }}\" == \"landing-react-vite-feature\" ]]; then\n  npm run build 2>&1 || EXIT_CODE=$?\nelse\n  ./node_modules/.bin/tsc --noEmit 2>&1 || EXIT_CODE=$?\n  ./node_modules/.bin/jest --watchAll=false --forceExit --passWithNoTests 2>&1 || EXIT_CODE=$?\nfi\necho \"FACTORY_EXIT_CODE=$EXIT_CODE\"\nexit $EXIT_CODE\n"
+      },
+      "id": "node-17-validate",
+      "name": "Run Validation",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3850,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('Write Files').first().json;\nconst passed = cmd.exitCode === 0;\nconst output = `EXIT_CODE: ${cmd.exitCode}\\n\\nSTDOUT:\\n${cmd.stdout}\\n\\nSTDERR:\\n${cmd.stderr}`;\nreturn [{ json: { ...data, validationOutput: output, validationPassed: passed, status: passed ? 'validation_passed' : 'validation_failed' } }];"
+      },
+      "id": "node-18-parse-validation",
+      "name": "Parse Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4100,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst data = $input.first().json;\nconst handoffPath = data.handoffPath;\nfs.mkdirSync(handoffPath, { recursive: true });\nfs.writeFileSync(`${handoffPath}/IMPLEMENTATION_PLAN.json`, JSON.stringify(data.plan, null, 2));\nfs.writeFileSync(`${handoffPath}/validation-output.txt`, data.validationOutput || '');\nfs.writeFileSync(`${handoffPath}/manifest.json`, JSON.stringify({\n  featureName: data.featureName,\n  status: data.validationPassed ? 'ready' : 'needs_fix',\n  filesWritten: data.filesWritten,\n  testsWritten: data.testsWritten,\n  validationPassed: data.validationPassed,\n  handoffPath\n}, null, 2));\nfs.writeFileSync(`${handoffPath}/claude-integration-steps.md`, `# Claude Code Integration\\n\\nFactory output is sandbox-only. Review files, integrate manually, run full validation, then commit.\\n\\n## Files\\n${(data.filesWritten || []).map(f => '- ' + f).join('\\n')}\\n\\n## Tests\\n${(data.testsWritten || []).map(f => '- ' + f).join('\\n')}`);\nreturn [{ json: { ...data, finalStatus: data.validationPassed ? 'ready' : 'needs_fix', status: 'handoff_packaged' } }];"
+      },
+      "id": "node-19-package-handoff",
+      "name": "Package Handoff",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4350,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.finalStatus, featureName: $json.featureName, workDir: $json.workDir, repoDir: $json.repoDir, handoffPath: $json.handoffPath, filesGenerated: $json.filesWritten, testsGenerated: $json.testsWritten, validationPassed: $json.validationPassed, errors: $json.errors }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-20-response",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        4600,
+        150
+      ]
+    }
+  ],
+  "connections": {
+    "Factory Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Validate Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Plan": {
+      "main": [
+        [
+          {
+            "node": "IF Plan Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Plan Valid": {
+      "main": [
+        [
+          {
+            "node": "Classify Risk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Risk": {
+      "main": [
+        [
+          {
+            "node": "Setup Sandbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Sandbox": {
+      "main": [
+        [
+          {
+            "node": "After Setup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Setup": {
+      "main": [
+        [
+          {
+            "node": "Clone Repo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clone Repo": {
+      "main": [
+        [
+          {
+            "node": "After Clone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Clone": {
+      "main": [
+        [
+          {
+            "node": "Generate Tests API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Tests API": {
+      "main": [
+        [
+          {
+            "node": "Parse Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Tests": {
+      "main": [
+        [
+          {
+            "node": "Write Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Tests": {
+      "main": [
+        [
+          {
+            "node": "Generate Implementation API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Implementation API": {
+      "main": [
+        [
+          {
+            "node": "Parse Implementation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Implementation": {
+      "main": [
+        [
+          {
+            "node": "Write Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Files": {
+      "main": [
+        [
+          {
+            "node": "Run Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Validation": {
+      "main": [
+        [
+          {
+            "node": "Parse Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Validation": {
+      "main": [
+        [
+          {
+            "node": "Package Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Package Handoff": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "id": "logitruck-factory-workflow-v1-importable",
+  "tags": [
+    {
+      "name": "logitruck-factory"
+    }
+  ]
+}

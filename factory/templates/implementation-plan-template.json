@@ -1,0 +1,105 @@
+{
+  "featureName": "",
+  "featureArchetype": "",
+  "secondaryArchetypes": [],
+  "summary": "",
+  "businessIntent": {
+    "problem": "",
+    "affectedRoles": [],
+    "expectedOutcome": "",
+    "operationalCriticality": "low | medium | high | critical"
+  },
+  "selectedBuildingBlocks": [
+    {
+      "name": "",
+      "path": "factory/knowledge/building-blocks/",
+      "reason": "",
+      "required": true
+    }
+  ],
+  "repoContext": {
+    "projectsAffected": [],
+    "relevantModules": [],
+    "referenceFiles": [],
+    "existingPatternsToFollow": [],
+    "knownAntiPatternsToAvoid": []
+  },
+  "architectureImpact": {
+    "riskLevel": "low | medium | high | critical",
+    "nativeRisk": false,
+    "touchesFirebase": false,
+    "touchesNavigation": false,
+    "touchesCloudFunctions": false,
+    "touchesPayments": false,
+    "touchesAI": false,
+    "touchesLanding": false,
+    "requiresHumanApproval": false
+  },
+  "automationScope": {
+    "factorySandboxOnly": true,
+    "factoryCanGenerate": [],
+    "factoryCanValidate": [],
+    "claudeCodeMustIntegrate": true,
+    "claudeCodeOnly": [],
+    "humanApprovalRequired": []
+  },
+  "files": {
+    "create": [
+      {
+        "filePath": "",
+        "project": "",
+        "description": "",
+        "buildingBlocks": [],
+        "risk": "low | medium | high | critical"
+      }
+    ],
+    "modify": [
+      {
+        "filePath": "",
+        "project": "",
+        "reason": "",
+        "buildingBlocks": [],
+        "risk": "low | medium | high | critical"
+      }
+    ],
+    "doNotTouch": []
+  },
+  "testingStrategy": {
+    "testFirst": true,
+    "testType": "pure-unit | hook | component | firestore-hook | cloud-function | integration | build-only",
+    "requiredMocks": [],
+    "avoid": [],
+    "commands": []
+  },
+  "validationStrategy": {
+    "sandboxCommands": [],
+    "expectedPassingSignals": [],
+    "failureEscalationRules": []
+  },
+  "factoryExecutionPlan": {
+    "steps": [],
+    "maxRetries": 2,
+    "handoffRequired": true,
+    "handoffPackage": {
+      "includeGeneratedFiles": true,
+      "includeTestResults": true,
+      "includeValidationOutput": true,
+      "includeRiskNotes": true,
+      "includeClaudeCodeIntegrationSteps": true
+    }
+  },
+  "claudeCodeIntegrationPlan": {
+    "required": true,
+    "reason": "Factory output is an integration candidate only.",
+    "steps": [],
+    "runtimeValidation": [],
+    "simulatorValidation": [],
+    "finalCommitChecklist": []
+  },
+  "rollbackPlan": {
+    "required": false,
+    "steps": []
+  },
+  "acceptanceCriteria": [],
+  "openQuestions": []
+}
