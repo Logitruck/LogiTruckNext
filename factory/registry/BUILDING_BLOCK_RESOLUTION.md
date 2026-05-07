@@ -115,6 +115,15 @@ For each building block name in `resolvedBuildingBlocks`, the factory loads:
 factory/building-blocks/<name>.md
 ```
 
+The factory also loads the following registry files as static context for all executions:
+
+```
+factory/registry/project-structure-registry.json   — file locations, import depths, role boundaries
+factory/registry/data-model-registry.json          — Firestore collection paths, ownership, field names
+```
+
+These registry files are always injected alongside the resolved building block bundle. They are not building blocks themselves and are not listed in `defaultBuildingBlocks` — they are static reference data that supplements the context bundle.
+
 All loaded documents are concatenated into a context bundle that is injected into the Haiku prompt.
 
 **Example resolved bundle for `mobile-screen-feature` + realtime:**
@@ -274,8 +283,10 @@ The following building blocks exist in `factory/building-blocks/` as of 2026-05-
 | `testing-guide.md` | Testing | ALL archetypes |
 | `trip-status-machine.md` | Domain logic | maps-tracking, cloud-function |
 | `voice-session-lifecycle.md` | Voice/Audio | voice-agent-elevenlabs, native-integration |
+| `firestore-data-model-access.md` | Firestore schema | firestore, mobile-screen, cloud-function, maps-tracking, ai-support-agent, voice-agent-elevenlabs, payments, landing |
+| `project-structure-imports.md` | File structure + imports | mobile-screen, firestore, cloud-function, maps-tracking, ai-support-agent, voice-agent-elevenlabs, landing (default); utility, native-integration, payments (optional) |
 
-**Total: 23 building blocks verified as physical files.**
+**Total: 25 building blocks verified as physical files.**
 
 ---
 
@@ -285,11 +296,10 @@ The following patterns are referenced in archetypes or building blocks but do NO
 
 | Missing Block | Referenced In | Priority |
 |---------------|--------------|----------|
-| `role-aware-data-access.md` | hook-service-pattern.md | HIGH — carrier/driver/finder query paths diverge |
+| `role-aware-data-access.md` | hook-service-pattern.md | MEDIUM — vendorID/activeVendorID resolution per role (partially covered by firestore-data-model-access) |
 | `model-toFirestore-pattern.md` | hook-service-pattern.md | MEDIUM — ES6 class + toFirestore() validation |
 | `offline-sync-pattern.md` | hook-service-pattern.md | MEDIUM — AsyncStorage + write queue |
 | `mutation-optimistic-update.md` | hook-service-pattern.md | LOW — optimistic UI during pending writes |
-| `collection-registry.md` | hook-service-pattern.md | HIGH — canonical collection name registry |
 | `stripe-webhook-handler.md` | stripe-payment-intent-lifecycle.md | CRITICAL — chargesEnabled never updates without this |
 | `ghl-crm-integration.md` | landing-react-vite-feature.md | MEDIUM — CRM webhook payload builders |
 

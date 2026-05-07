@@ -10,7 +10,9 @@
       "defaultBuildingBlocks": [
         "testing-guide"
       ],
-      "optionalBuildingBlocks": [],
+      "optionalBuildingBlocks": [
+        "project-structure-imports"
+      ],
       "executionLevelDefault": "L0",
       "riskLevelDefault": "low",
       "allowedScopes": [
@@ -44,12 +46,14 @@
         "screen-hook-separation",
         "hook-service-pattern",
         "loading-empty-error-state",
-        "testing-guide"
+        "testing-guide",
+        "project-structure-imports"
       ],
       "optionalBuildingBlocks": [
         "realtime-firestore-listener",
         "async-lookup-then-subscribe",
-        "route-rendering-pattern"
+        "route-rendering-pattern",
+        "firestore-data-model-access"
       ],
       "executionLevelDefault": "L1",
       "riskLevelDefault": "medium",
@@ -87,11 +91,13 @@
         "hook-service-pattern",
         "realtime-firestore-listener",
         "loading-empty-error-state",
-        "testing-guide"
+        "testing-guide",
+        "project-structure-imports"
       ],
       "optionalBuildingBlocks": [
         "async-lookup-then-subscribe",
-        "idempotent-event-processing"
+        "idempotent-event-processing",
+        "firestore-data-model-access"
       ],
       "executionLevelDefault": "L1",
       "riskLevelDefault": "medium",
@@ -133,7 +139,8 @@
         "callable-function-pattern",
         "callable-auth-pattern",
         "cloud-function-structure",
-        "testing-guide"
+        "testing-guide",
+        "project-structure-imports"
       ],
       "optionalBuildingBlocks": [
         "firestore-trigger-pattern",
@@ -141,7 +148,8 @@
         "firestore-trigger-orchestration",
         "idempotent-event-processing",
         "notification-trigger-pattern",
-        "cloud-task-orchestration"
+        "cloud-task-orchestration",
+        "firestore-data-model-access"
       ],
       "executionLevelDefault": "L1",
       "riskLevelDefault": "medium",
@@ -186,13 +194,15 @@
         "hook-service-pattern",
         "realtime-firestore-listener",
         "loading-empty-error-state",
-        "testing-guide"
+        "testing-guide",
+        "project-structure-imports"
       ],
       "optionalBuildingBlocks": [
         "async-lookup-then-subscribe",
         "trip-status-machine",
         "route-rendering-pattern",
-        "idempotent-event-processing"
+        "idempotent-event-processing",
+        "firestore-data-model-access"
       ],
       "executionLevelDefault": "L2",
       "riskLevelDefault": "high",
@@ -236,7 +246,8 @@
       "optionalBuildingBlocks": [
         "voice-session-lifecycle",
         "route-rendering-pattern",
-        "loading-empty-error-state"
+        "loading-empty-error-state",
+        "project-structure-imports"
       ],
       "executionLevelDefault": "L2",
       "riskLevelDefault": "critical",
@@ -279,7 +290,9 @@
         "stripe-payment-intent-lifecycle",
         "event-driven-orchestration",
         "firestore-trigger-pattern",
-        "notification-trigger-pattern"
+        "notification-trigger-pattern",
+        "firestore-data-model-access",
+        "project-structure-imports"
       ],
       "executionLevelDefault": "L2",
       "riskLevelDefault": "critical",
@@ -320,7 +333,8 @@
         "screen-hook-separation",
         "loading-empty-error-state",
         "AI-session-orchestration",
-        "testing-guide"
+        "testing-guide",
+        "project-structure-imports"
       ],
       "optionalBuildingBlocks": [
         "AI-workflow-pipeline",
@@ -328,7 +342,8 @@
         "callable-function-pattern",
         "callable-auth-pattern",
         "cloud-function-structure",
-        "idempotent-event-processing"
+        "idempotent-event-processing",
+        "firestore-data-model-access"
       ],
       "executionLevelDefault": "L1",
       "riskLevelDefault": "high",
@@ -370,14 +385,16 @@
       "defaultBuildingBlocks": [
         "voice-session-lifecycle",
         "AI-session-orchestration",
-        "testing-guide"
+        "testing-guide",
+        "project-structure-imports"
       ],
       "optionalBuildingBlocks": [
         "AI-workflow-pipeline",
         "assistant-session-persistence",
         "callable-function-pattern",
         "cloud-function-structure",
-        "loading-empty-error-state"
+        "loading-empty-error-state",
+        "firestore-data-model-access"
       ],
       "executionLevelDefault": "L2",
       "riskLevelDefault": "high",
@@ -418,14 +435,16 @@
       "description": "React/Vite web landing projects: investor landings, shipper landings, lead capture pages, AI voice landing experiences, conversion funnels.",
       "defaultBuildingBlocks": [
         "loading-empty-error-state",
-        "testing-guide"
+        "testing-guide",
+        "project-structure-imports"
       ],
       "optionalBuildingBlocks": [
         "AI-session-orchestration",
         "AI-workflow-pipeline",
         "voice-session-lifecycle",
         "assistant-session-persistence",
-        "idempotent-event-processing"
+        "idempotent-event-processing",
+        "firestore-data-model-access"
       ],
       "executionLevelDefault": "L1",
       "riskLevelDefault": "medium",

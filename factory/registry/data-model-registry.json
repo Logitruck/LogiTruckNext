@@ -1,0 +1,551 @@
+{
+  "version": "1.0.0",
+  "derivedFrom": "src/ hooks, functions/ triggers, functions/core/collections.js — no paths invented",
+  "liveCollectionLimit": 50,
+  "note": "collections.js splits every subcollection into _live / _historical at 50-doc threshold. Listeners must target _live; historical is pagination-only.",
+
+  "collections": {
+
+    "users": {
+      "path": "users/{userID}",
+      "docIdStrategy": "Firebase Auth UID",
+      "ownership": "auth user (self-owned)",
+      "keyFields": [
+        "id", "email", "firstName", "lastName", "fullName",
+        "role", "vendorID", "activeVendorID",
+        "inProgressOrderID", "orderRequestData",
+        "location", "carType",
+        "ratings", "ratingsCount",
+        "rolesArray", "preferredLanguage", "profilePictureURL"
+      ],
+      "queryPatterns": [
+        "doc(db, 'users', uid) — by Auth UID",
+        "where('role', '==', 'driver').where('inProgressOrderID', '==', null) — available drivers",
+        "where('email', '==', email) — lookup by email (functions/core/user.js)"
+      ],
+      "syncedTo": ["vendor_users/{vendorID}/users/{userID}"],
+      "notes": "activeVendorID takes precedence over vendorID when both are present. Profile writes must also update vendor_users subcollection (see useUpdateUserProfile).",
+      "confidence": "confirmed"
+    },
+
+    "vendor_users": {
+      "path": "vendor_users/{vendorID}",
+      "docIdStrategy": "vendorID — parent doc is a container, has no own data",
+      "ownership": "carrier/finder company",
+      "keyFields": [],
+      "subcollections": {
+        "users": {
+          "path": "vendor_users/{vendorID}/users/{userID}",
+          "docIdStrategy": "Firebase Auth UID (same as users collection)",
+          "keyFields": [
+            "id", "userID", "firstName", "lastName", "fullName",
+            "email", "profilePictureURL",
+            "role", "rolesArray", "status", "activeRole", "preferredLanguage"
+          ],
+          "queryPatterns": [
+            "where('rolesArray', 'array-contains', 'driver') — company driver list",
+            "where('status', '==', 'active').where('activeRole', '==', 'finder').limit(1) — finder user lookup"
+          ],
+          "notes": "Mirror of users collection. Always write to both. rolesArray is used for array-contains queries; role is singular display value."
+        }
+      },
+      "notes": "vendorID obtained from users.vendorID or users.activeVendorID. Never query vendor_users without a known vendorID.",
+      "confidence": "confirmed"
+    },
+
+    "vendor_vehicles": {
+      "path": "vendor_vehicles/{vendorID}",
+      "docIdStrategy": "vendorID — container doc, no own data",
+      "ownership": "carrier company",
+      "keyFields": [],
+      "subcollections": {
+        "vehicles": {
+          "path": "vendor_vehicles/{vendorID}/vehicles/{vehicleID}",
+          "docIdStrategy": "vehicleID (matches field vehicleID inside doc)",
+          "keyFields": [
+            "vehicleID", "name", "number",
+            "type",
+            "inspectionSummary",
+            "requiresPretrip", "requiresPosttrip",
+            "operationSessionOpen",
+            "lastInspectionType", "lastInspectionContext",
+            "lastInspectionLocation",
+            "lastInspectionPDF", "lastReportDate",
+            "lastInspectionReportId", "statusReport"
+          ],
+          "typeValues": ["Truck", "Trailer"],
+          "inspectionSummaryFields": [
+            "inspectionID", "reportID", "pairedVehicleID",
+            "statusReport", "lastReportDate", "pdfURL",
+            "canContinueOperation", "lastDriverID", "reviewedAt",
+            "vehicleType", "inspectionType", "inspectionContext", "inspectionLocation"
+          ],
+          "queryPatterns": [
+            "collection(db,'vendor_vehicles',vendorID,'vehicles') — all vehicles for vendor",
+            "where('vehicleID','in',[...ids]) — batch vehicle lookup",
+            "where(documentId(),'in',[...ids]) — by doc ID"
+          ],
+          "subcollections": {
+            "inspections": {
+              "path": "vendor_vehicles/{vendorID}/vehicles/{vehicleID}/inspections/{inspectionID}",
+              "docIdStrategy": "inspectionID (shared with carrier_inspections)",
+              "keyFields": [
+                "inspectionID", "reportID", "vendorID", "vehicleID", "vehicleType",
+                "inspectionType", "inspectionContext", "operationContext",
+                "inspectionLocation", "jobID", "projectID", "channelID",
+                "driver", "carrier", "dispatchCarrier",
+                "driverReport", "reviewReport",
+                "pdfURL", "statusReport", "dateReport",
+                "truckID", "trailerID",
+                "createdAt", "updatedAt", "updatedBy"
+              ],
+              "notes": "This is the source of truth for inspection records. carrier_inspections is a read-optimized denormalized copy.",
+              "subcollections": {
+                "statusHistory": {
+                  "path": "vendor_vehicles/{vendorID}/vehicles/{vehicleID}/inspections/{inspectionID}/statusHistory/{id}",
+                  "docIdStrategy": "auto-generated",
+                  "keyFields": [
+                    "statusReport", "authorID", "createdAt", "source",
+                    "vehicleID", "vehicleType", "inspectionType", "inspectionContext",
+                    "inspectionLocation", "reviewReport"
+                  ],
+                  "notes": "Immutable audit trail. Written by Cloud Function trigger only (source: 'cloud_function')."
+                }
+              }
+            }
+          },
+          "notes": "inspectionSummary is a denormalized snapshot embedded on the vehicle doc. It is updated by the inspection trigger — never write it directly from client. requiresPretrip / operationSessionOpen gate job start validation."
+        }
+      },
+      "confidence": "confirmed"
+    },
+
+    "carrier_inspections": {
+      "path": "carrier_inspections/{vendorID}",
+      "docIdStrategy": "vendorID — container doc",
+      "ownership": "carrier company (read-optimized index)",
+      "purpose": "Denormalized read index for dispatcher inspection dashboard. Source of truth is vendor_vehicles/.../inspections.",
+      "keyFields": [],
+      "subcollections": {
+        "dispatchers": {
+          "path": "carrier_inspections/{vendorID}/dispatchers/{dispatcherID}",
+          "docIdStrategy": "dispatcherID (Auth UID)",
+          "keyFields": ["firstName", "lastName", "email", "updatedAt", "createdAt"],
+          "subcollections": {
+            "inspections": {
+              "path": "carrier_inspections/{vendorID}/dispatchers/{dispatcherID}/inspections/{inspectionID}",
+              "docIdStrategy": "inspectionID",
+              "keyFields": [
+                "inspectionID", "reportID", "vendorID",
+                "vehicleID", "vehicleType",
+                "inspectionType", "inspectionContext", "operationContext",
+                "inspectionLocation", "jobID", "projectID", "channelID",
+                "driver", "carrier", "dispatchCarrier",
+                "driverReport", "reviewReport",
+                "pdfURL", "statusReport", "dateReport",
+                "truckID", "trailerID",
+                "createdAt"
+              ],
+              "queryPatterns": [
+                "collection(db,'carrier_inspections',vendorID,'dispatchers',dispatchID,'inspections') — all inspections for a dispatcher"
+              ],
+              "notes": "Written by useInspectionReportMutations (client) and saveDispatcherInspectionSummary (trigger). Never read for source-of-truth — always use vendor_vehicles for authoritative data."
+            }
+          }
+        }
+      },
+      "notes": "Written in parallel with vendor_vehicles/.../inspections. The two paths always receive the same inspectionID. If they diverge, vendor_vehicles is authoritative.",
+      "confidence": "confirmed"
+    },
+
+    "requests": {
+      "path": "requests/{requestID}",
+      "docIdStrategy": "auto-generated Firestore doc ID",
+      "ownership": "finder (shipper/cargo owner) — finderID field",
+      "keyFields": [
+        "finderID",
+        "createdBy",
+        "routes",
+        "totalRoutes", "totalTrips",
+        "averageDieselPrice", "suggestedPriceRange",
+        "status", "contract_status",
+        "confirmedVendor",
+        "executedBy",
+        "channelID",
+        "assignmentMode",
+        "createdAt", "updatedAt"
+      ],
+      "createdByFields": ["userID", "email", "displayName", "firstName", "lastName", "vendorID"],
+      "statusMachine": {
+        "values": ["sending", "open", "pending", "accepted", "to_sign", "signed", "execution", "cancelled"],
+        "transitions": {
+          "sending": "open (after distributeRequest fans out)",
+          "open": "pending (carrier submits offer)",
+          "pending": "accepted (finder accepts offer)",
+          "accepted": "to_sign (documents approved)",
+          "to_sign": "signed (both parties sign)",
+          "signed": "execution (project created by trigger)",
+          "any": "cancelled"
+        }
+      },
+      "contractStatusMachine": {
+        "values": ["draft", "preparing_list", "sent_list", "review_documents", "request_changes", "to_sign", "signed"],
+        "note": "Propagated to vendor_requests.contract_status via onRequestUpdated trigger with field mapping"
+      },
+      "triggers": {
+        "onRequestCreated": "fans out to vendor_requests/{vendorID}/requests — distributeRequest.js",
+        "onRequestUpdated": "syncs status to vendor_requests; creates project_channels when status=signed"
+      },
+      "queryPatterns": [
+        "doc(db,'requests',requestID) — by ID",
+        "collectionGroup('requests').where('requestID','==',requestID) — cross-vendor lookup in triggers"
+      ],
+      "confidence": "confirmed"
+    },
+
+    "vendor_requests": {
+      "path": "vendor_requests/{vendorID}",
+      "docIdStrategy": "vendorID — container doc, created on-demand",
+      "ownership": "carrier company",
+      "keyFields": [],
+      "subcollections": {
+        "requests": {
+          "path": "vendor_requests/{vendorID}/requests/{requestID}",
+          "docIdStrategy": "requestID — same ID as requests/{requestID}",
+          "keyFields": [
+            "requestID",
+            "requestRef",
+            "status", "contract_status",
+            "offer", "matchedRoutes",
+            "vendorID",
+            "executedBy",
+            "channelID",
+            "updatedAt"
+          ],
+          "requestRefNote": "Firestore DocumentReference pointing to requests/{requestID}. Used by useVendorRequestsList to enrich the vendor view with full request data.",
+          "offerFields": ["routeOffers", "totalTrips", "notes"],
+          "queryPatterns": [
+            "collection(db,'vendor_requests',vendorID,'requests') — onSnapshot for carrier home screen",
+            "collectionGroup('requests').where('requestID','==',id) — trigger cross-vendor scan"
+          ],
+          "syncedWith": "requests/{requestID} via bidirectional Firestore triggers",
+          "contractStatusMapping": {
+            "requests.sent_list": "vendor_requests.send_documents",
+            "requests.review_documents": "vendor_requests.review_documents",
+            "requests.request_changes": "vendor_requests.review_changes"
+          }
+        }
+      },
+      "notes": "Created by distributeRequest trigger when a new request is created. requestID in the subcollection doc matches the parent requests collection. Use requestRef.get() to hydrate full request data.",
+      "confidence": "confirmed"
+    },
+
+    "channels": {
+      "path": "channels/{channelID}",
+      "docIdStrategy": "composite string or generated — set by createChannel caller",
+      "ownership": "all participants equally",
+      "purpose": "IMChat system — human-to-human and human-to-AI chat",
+      "keyFields": [
+        "id", "name",
+        "participants",
+        "creatorID",
+        "readUserIDs",
+        "typingUsers",
+        "lastMessage", "lastMessageDate",
+        "lastMessageSenderId", "lastThreadMessageId",
+        "createdAt", "updatedAt"
+      ],
+      "participantFields": ["id", "firstName", "lastName", "profilePictureURL", "language"],
+      "subcollections": {
+        "messages_live": {
+          "path": "channels/{channelID}/messages_live/{messageID}",
+          "note": "Max 50 docs (liveCollectionCountLimit). Safe to attach onSnapshot listener directly.",
+          "keyFields": ["_id", "content", "media", "senderID", "createdAt", "readUserIDs", "translations", "language"]
+        },
+        "messages_historical": {
+          "path": "channels/{channelID}/messages_historical/{messageID}",
+          "note": "Unbounded. NEVER attach onSnapshot. Access only via paginated Cloud Function (listMessages).",
+          "keyFields": ["_id", "content", "media", "senderID", "createdAt", "readUserIDs", "translations", "language"]
+        }
+      },
+      "accessPattern": "All reads/writes via Cloud Functions (listChannels, insertMessage, deleteMessage). Direct onSnapshot only on messages_live.",
+      "notes": "Do NOT confuse with project_channels. channels is the IMChat system. project_channels is the project orchestration container.",
+      "confidence": "confirmed"
+    },
+
+    "channelsAI": {
+      "path": "channelsAI/{channelID}",
+      "docIdStrategy": "composite or generated — same convention as channels",
+      "ownership": "AI support module",
+      "purpose": "AI-powered chat sessions (aiSupport module). Same schema as channels.",
+      "keyFields": [
+        "id", "name", "participants", "creatorID",
+        "readUserIDs", "typingUsers",
+        "lastMessage", "lastMessageDate", "lastMessageSenderId", "lastThreadMessageId",
+        "createdAt", "updatedAt"
+      ],
+      "subcollections": {
+        "messages_live": {
+          "path": "channelsAI/{channelID}/messages_live/{messageID}",
+          "note": "Same 50-doc limit. Safe for onSnapshot."
+        },
+        "messages_historical": {
+          "path": "channelsAI/{channelID}/messages_historical/{messageID}",
+          "note": "Paginate via listMessages only."
+        }
+      },
+      "accessPattern": "Via createChannelAI, insertMessageAI, listChannelsAI Cloud Functions.",
+      "confidence": "confirmed"
+    },
+
+    "social_feeds": {
+      "path": "social_feeds/{userID}",
+      "docIdStrategy": "Firebase Auth UID — one doc per user",
+      "ownership": "user (personal feed index)",
+      "purpose": "Denormalized chat feed index powering the chat home screen. Updated on every message insert.",
+      "keyFields": [],
+      "subcollections": {
+        "chat_feed_live": {
+          "path": "social_feeds/{userID}/chat_feed_live/{channelID}",
+          "note": "Max 50 docs. Safe for onSnapshot in chatRef.ts (chatFeedLive).",
+          "keyFields": ["id", "markedAsRead", "lastMessage", "lastMessageDate", "status", "createdAt"]
+        },
+        "chat_feed_historical": {
+          "path": "social_feeds/{userID}/chat_feed_historical/{channelID}",
+          "note": "Paginate via listChannels Cloud Function only."
+        }
+      },
+      "accessPattern": "chatRef.ts exposes socialFeedDoc and chatFeedLive. Write via hydrateChatFeedsForAllParticipants (called on every insertMessage).",
+      "notes": "Feed item docID is the channelID. markedAsRead is written by markAsRead callable.",
+      "confidence": "confirmed"
+    },
+
+    "project_channels": {
+      "path": "project_channels/{channelID}",
+      "docIdStrategy": "{finderVendorID}_{carrierVendorID} composite",
+      "ownership": "both companies (finder + carrier)",
+      "purpose": "Project orchestration container. Created by onRequestUpdated trigger when requests.status transitions to 'signed'.",
+      "keyFields": [
+        "finderID", "carrierID",
+        "companiesParticipants", "companiesParticipantIDs",
+        "createdAt", "updatedAt"
+      ],
+      "subcollections": {
+        "projects": {
+          "path": "project_channels/{channelID}/projects/{projectID}",
+          "docIdStrategy": "requestID — same ID as requests/{requestID}",
+          "keyFields": [
+            "requestID", "finderID", "carrierID", "vendorID",
+            "confirmedVendor", "channelID",
+            "status",
+            "name", "routes", "totalRoutes", "totalTrips",
+            "acceptedOffer", "assignedFinder",
+            "companiesParticipants", "companiesParticipantIDs",
+            "createdAt", "updatedAt"
+          ],
+          "projectStatusValues": ["setup", "active", "completed", "cancelled"],
+          "subcollections": {
+            "jobs": {
+              "path": "project_channels/{channelID}/projects/{projectID}/jobs/{jobID}",
+              "docIdStrategy": "auto-generated or set by function",
+              "keyFields": [
+                "vendorID", "assignedVendorID",
+                "assignedDriverID", "assignedDriverName",
+                "assignedTruckID", "assignedTrailerID",
+                "assignedDispatcher", "assignedDispatcherID",
+                "channelID", "projectID",
+                "projectName", "projectTitle",
+                "status", "tripStatus",
+                "origin", "destination", "routeSummary",
+                "currentLocation",
+                "createdAt", "updatedAt"
+              ],
+              "statusMachine": {
+                "values": ["scheduled", "assigned", "in_progress", "completed", "cancelled"]
+              },
+              "queryPatterns": [
+                "collectionGroup(db,'jobs').where('vendorID','==',vendorID) — carrier job list",
+                "collectionGroup(db,'jobs').where('assignedDriverID','==',driverID).where('status','in',['scheduled','assigned','in_progress']) — driver assigned jobs",
+                "doc(db,'project_channels',channelID,'projects',projectID,'jobs',jobID) — direct access"
+              ],
+              "notes": "collectionGroup('jobs') requires composite index on vendorID and assignedDriverID. Parent path resolution: docSnap.ref.parent.parent = project; project.parent.parent = project_channels doc."
+            },
+            "setupFlags": {
+              "path": "project_channels/{channelID}/projects/{projectID}/setupFlags/{role}",
+              "docIdStrategy": "role — fixed values 'finder' or 'carrier'",
+              "keyFields": ["done"],
+              "notes": "Dual-party gate. onSetupFlagWritten trigger fires when both finder and carrier flags have done=true, then creates jobs."
+            }
+          }
+        }
+      },
+      "notes": "Do NOT confuse with channels. project_channels is the logistics project container. channels is the IMChat system. The channelID stored in jobs/requests refers to this collection's doc ID.",
+      "confidence": "confirmed"
+    },
+
+    "vendors": {
+      "path": "vendors/{vendorID}",
+      "docIdStrategy": "vendorID",
+      "ownership": "platform",
+      "keyFields": ["serviceCategoryIDs"],
+      "queryPatterns": [
+        "db.collection('vendors').get() — full scan for marketplace distribution (distributeRequest.js)"
+      ],
+      "notes": "Read by distributeRequest trigger to find all vendors eligible for a new request. serviceCategoryIDs matched against request rideType.id.",
+      "confidence": "confirmed"
+    },
+
+    "vendor_locations": {
+      "path": "vendor_locations/{vendorID}",
+      "docIdStrategy": "vendorID — container doc",
+      "ownership": "carrier company",
+      "keyFields": [],
+      "subcollections": {
+        "locations": {
+          "path": "vendor_locations/{vendorID}/locations/{locationID}",
+          "docIdStrategy": "auto-generated",
+          "keyFields": ["location", "maxDistanceService"],
+          "locationShape": "location.location.lat + location.location.lng (nested)",
+          "notes": "Used by distributeRequest for haversine radius matching. maxDistanceService in km."
+        }
+      },
+      "confidence": "confirmed"
+    },
+
+    "logitruck_investor_agent_sessions": {
+      "path": "logitruck_investor_agent_sessions/{sessionId}",
+      "docIdStrategy": "client-generated sessionId (UUID)",
+      "ownership": "investor landing page",
+      "purpose": "Stores conversation turns and GPT-4o analysis from the investor voice agent on the web landing.",
+      "keyFields": [
+        "id", "source", "hasAnalysis", "analyzedAt", "updatedAt", "createdAt"
+      ],
+      "subcollections": {
+        "turns": {
+          "path": "logitruck_investor_agent_sessions/{sessionId}/turns/{autoID}",
+          "docIdStrategy": "auto-generated (Firestore add())",
+          "keyFields": ["role", "text", "source", "clientTimestamp", "createdAt"],
+          "roleValues": ["user", "assistant"],
+          "queryPatterns": [
+            "orderBy('clientTimestamp','asc') — reconstruct dialogue in finalizeInvestorSession"
+          ]
+        },
+        "analysis": {
+          "path": "logitruck_investor_agent_sessions/{sessionId}/analysis/{autoID}",
+          "docIdStrategy": "auto-generated",
+          "keyFields": [
+            "name", "email", "phone",
+            "interestLevel",
+            "mainObjections", "suggestedNextSteps",
+            "sessionId", "model", "turnCount", "createdAt"
+          ],
+          "notes": "Written by finalizeInvestorSession onRequest function. GPT-4o json_object output. interestLevel is 1-10. Arrays are max 3 items."
+        }
+      },
+      "accessPattern": "saveLogiTruckInvestorTurn (onRequest POST) and finalizeInvestorSession (onRequest POST). Never accessed from mobile app.",
+      "confidence": "confirmed"
+    },
+
+    "notifications": {
+      "path": "notifications/{notificationID}",
+      "docIdStrategy": "uncertain",
+      "ownership": "platform",
+      "keyFields": [],
+      "notes": "Referenced in notification trigger (firestore.collection('notifications')). Full schema not inspected — treat as uncertain.",
+      "confidence": "uncertain"
+    },
+
+    "taxi_trips": {
+      "path": "taxi_trips/{tripID}",
+      "docIdStrategy": "auto-generated Firestore doc ID",
+      "ownership": "passenger (Finder role in legacy flow)",
+      "keyFields": [
+        "passenger", "driver",
+        "status",
+        "createdAt", "updatedAt", "tripEndTime"
+      ],
+      "statusValues": ["trip_completed", "passenger_cancelled"],
+      "queryPatterns": [
+        "where('passenger.id','==',userId).where('status','==','trip_completed') — trip history",
+        "where('role','==','driver').where('inProgressOrderID','==',null) — available drivers (queries users collection)"
+      ],
+      "notes": "Legacy system from pre-logistics taxi prototype. tripsAPIManager.ts. Still present in codebase. May be unused in production logistics flow.",
+      "confidence": "confirmed"
+    },
+
+    "master_categories": {
+      "path": "master_categories/{categoryID}",
+      "docIdStrategy": "category ID",
+      "ownership": "platform",
+      "keyFields": [],
+      "notes": "Service/ride type categories. Used by tripsAPIManager. Relationship to vendor serviceCategoryIDs uncertain — not confirmed same IDs.",
+      "confidence": "uncertain"
+    },
+
+    "logitruck_public_context": {
+      "path": "logitruck_public_context/{docID}",
+      "docIdStrategy": "uncertain",
+      "ownership": "platform",
+      "keyFields": [],
+      "notes": "Used by investor landing AI functions (getLogiTruckInvestorContext, getLogiTruckMarketStudy) as a static knowledge base. Schema not fully inspected.",
+      "confidence": "uncertain"
+    }
+  },
+
+  "collectionGroupQueries": {
+    "jobs": {
+      "collectionGroup": "jobs",
+      "parentPath": "project_channels/{channelID}/projects/{projectID}/jobs",
+      "requiredIndexes": [
+        "vendorID ASC",
+        "assignedDriverID ASC + status IN"
+      ],
+      "usedBy": ["useCarrierJobsList", "useAssignedJobs", "useDriverAssignedVehicles"]
+    },
+    "vendor_requests_requests": {
+      "collectionGroup": "requests",
+      "parentPath": "vendor_requests/{vendorID}/requests",
+      "note": "Collides with top-level requests collection name — use collectionGroup carefully. Always filter by requestID field.",
+      "requiredIndexes": ["requestID =="],
+      "usedBy": ["onRequestUpdated trigger — cancel/accept fan-out"]
+    }
+  },
+
+  "architecturalPatterns": {
+    "liveHistoricalSplit": {
+      "description": "All subcollections managed by collections.js follow _live / _historical split. Live capped at 50 docs.",
+      "affectedCollections": [
+        "channels/{id}/messages_live",
+        "channels/{id}/messages_historical",
+        "channelsAI/{id}/messages_live",
+        "channelsAI/{id}/messages_historical",
+        "social_feeds/{id}/chat_feed_live",
+        "social_feeds/{id}/chat_feed_historical"
+      ]
+    },
+    "denormalizedIndexes": {
+      "description": "Several collections are denormalized copies maintained by triggers for read performance.",
+      "pairs": [
+        {
+          "source": "vendor_vehicles/{v}/vehicles/{id}/inspections/{id}",
+          "index": "carrier_inspections/{v}/dispatchers/{d}/inspections/{id}",
+          "writtenBy": "useInspectionReportMutations + inspections.js trigger"
+        },
+        {
+          "source": "requests/{id}",
+          "index": "vendor_requests/{v}/requests/{id}",
+          "writtenBy": "distributeRequest trigger + onRequestUpdated trigger"
+        },
+        {
+          "source": "users/{id} profile fields",
+          "index": "vendor_users/{v}/users/{id}",
+          "writtenBy": "useUpdateUserProfile + propagateUserProfileUpdates trigger"
+        }
+      ]
+    },
+    "vendorIDAsContainerPattern": {
+      "description": "vendor_users, vendor_vehicles, vendor_requests, vendor_locations, carrier_inspections all use vendorID as the top-level doc ID with subcollections below. The parent doc itself carries no meaningful data — it is a container.",
+      "resolution": "Always provide vendorID before any subcollection query. vendorID = currentUser.activeVendorID ?? currentUser.vendorID."
+    }
+  }
+}

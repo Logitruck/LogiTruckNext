@@ -1,0 +1,326 @@
+{
+  "version": "1.0.0",
+  "derivedFrom": "real repo — directory tree, import statements in screens/hooks/navigators, tsconfig.json, babel.config.js, jest.config.js, functions/index.js",
+  "note": "No TypeScript path aliases. No babel module-resolver. Every import is relative. All paths below are relative to the repo root.",
+
+  "rootLayout": {
+    "src/": "All React Native application source",
+    "functions/": "Firebase Cloud Functions (Node.js CJS)",
+    "App.tsx": "Expo app entry component",
+    "index.ts": "Expo registerRootComponent entry",
+    "tsconfig.json": "No compilerOptions.paths — zero aliases",
+    "babel.config.js": "No module-resolver plugin — zero aliases",
+    "jest.config.js": "jest-expo preset, src/**/ coverage",
+    "jest.setup.ts": "Global test setup",
+    "__mocks__/": "Global Jest mocks (react-native-reanimated.js)",
+    "factory/": "AI Software Factory",
+    "graphify-out/": "Knowledge graph output"
+  },
+
+  "sourceTree": {
+    "src/carrier/": {
+      "purpose": "Carrier role — dispatcher / fleet manager",
+      "components/": "Role-specific UI components",
+      "hooks/": "Domain hooks for carrier data",
+      "hooks/__tests__/": "Colocated test files for carrier hooks",
+      "hooks/home/": "Sub-namespace; has index.ts barrel",
+      "navigation/": "CarrierRootNavigator, tabs, stacks, drawer",
+      "screens/": "Carrier screens (mix of flat files and subfolders)",
+      "types/": "TypeScript types for carrier domain",
+      "utils/": "Carrier-specific utility functions"
+    },
+    "src/driver/": {
+      "purpose": "Driver role — truck driver",
+      "hooks/": "Domain hooks (no __tests__ subdirectory observed)",
+      "navigation/": "DriverRootNavigator, drawer, tabs",
+      "screens/": "Driver screens under Home/, Inspections/, Jobs/ subdirs"
+    },
+    "src/finder/": {
+      "purpose": "Finder role — shipper / cargo owner",
+      "components/": "Role-specific UI components",
+      "hooks/": "Domain hooks; hooks/home/ sub-namespace",
+      "navigation/": "FinderRootNavigator",
+      "screens/": "Finder screens with nested topic subdirectories",
+      "services/": "tripsAPIManager.ts — role-level Firebase service"
+    },
+    "src/modules/": {
+      "purpose": "Cross-role feature modules (shared by 2+ roles)",
+      "aiSupport/": {
+        "components/": "SupportComposer, SupportMessageBubble, SupportQuickActions",
+        "hooks/": "useSupportAssistant.ts",
+        "screens/SupportAssistantScreen/": "SupportAssistantScreen.tsx + styles.ts",
+        "types.ts": "Module-level types at module root (not inside types/)",
+        "utils/": "buildSupportContext.ts"
+      },
+      "contracts/": {
+        "hooks/": "Contract-related hooks",
+        "navigation/": "Contract stack navigator",
+        "screens/contracts/": "Deep-nested screen subdirectories"
+      },
+      "inspections/": {
+        "hooks/": "useCarrierInspectionVehicles, useFullInspectionDetails, etc.",
+        "screens/": "PreviewInspectionScreen/, ReportView/",
+        "services/": "Inspection upload/report services"
+      },
+      "projects/": {
+        "hooks/carrier/": "Carrier-specific project hooks",
+        "hooks/finder/": "Finder-specific project hooks",
+        "hooks/shared/": "Shared project hooks (useProjectDetails.ts)",
+        "navigation/": "Project navigator",
+        "screens/carrier/": "Carrier project screens",
+        "screens/finder/": "Finder project screens",
+        "screens/shared/": "Role-agnostic project screens (ProjectDetailsScreen/)"
+      },
+      "vehicleExpenses/": {
+        "components/": "Expense UI components",
+        "hooks/": "Expense hooks",
+        "screens/": "AddFuelExpenseScreen/, AddRepairExpenseScreen/, VehicleExpensesListScreen/",
+        "services/": "vehicleExpenseService.ts",
+        "index.ts": "Module barrel export"
+      }
+    },
+    "src/chat/": {
+      "purpose": "Chat feature layer — wraps core/chat for role-specific entry points",
+      "ChatEntryScreen/": "Shared chat entry screen",
+      "DriverHomeChatScreen/": "Driver-role chat home",
+      "ManagerHomeChatScreen/": "Carrier-role chat home",
+      "components/": "ChatParticipantModal, IMConversationPreviewCard, etc.",
+      "hooks/": "useCompanyDrivers, useDriverChatParticipants",
+      "navigation/": "Chat stack navigators"
+    },
+    "src/core/": {
+      "purpose": "Shared infrastructure — imported by all roles and modules",
+      "chat/": {
+        "api/": "Firebase chat client — chatRef.ts, firebaseChatClient.ts, hooks; index.ts barrel",
+        "IMChatScreen/": "Core chat room implementation (~1064 lines — do not edit without full read)",
+        "IMConversationList/": "Chat list component",
+        "helpers/": "Chat utility helpers"
+      },
+      "components/": "MapViewBase, AnimatedMarker, RouteMap, MultiSelectSheet, StatusTabs",
+      "dopebase/": "UI system: useTheme, useTranslations, ActionSheetProvider, BottomSheet; index.tsx barrel",
+      "firebase/": {
+        "config.ts": "ONLY file — Firebase init, exports auth + db + FieldValue"
+      },
+      "helpers/": "timeFormat and other shared helpers",
+      "media/": "storageAPI.ts — Firebase Storage; index.ts barrel",
+      "navigation/": "RootNavigation.ts — global navigation ref",
+      "notifications/": "Push handlers, InAppNotificationProvider",
+      "onboarding/": {
+        "api/": "Auth API; index.ts barrel",
+        "hooks/useAuth.tsx": "useCurrentUser, useAuth — imported by ALL hooks that need the current user",
+        "utils/": "resolveActiveVendorID.ts and helpers"
+      },
+      "profile/": {
+        "components/": "Profile UI components",
+        "hooks/": "useUpdateUserProfile.ts",
+        "hooks/__tests__/": "Profile hook tests",
+        "screens/": "MyProfileScreen/"
+      },
+      "ui/": "Drawer menu, SearchBarAlternate",
+      "vendor/hooks/": "Vendor-related shared hooks"
+    },
+    "src/config/": "ConfigProvider + useConfig hook; index.tsx barrel",
+    "src/navigation/": "Root navigator (RootNavigator)",
+    "src/redux/": "Redux store — 6 slices; index.ts barrel",
+    "src/screens/": "Root-level screens: AppContainer.tsx, auth/LoginScreen.tsx, auth/SelectRoleScreen.tsx, auth/SelectVendorScreen.tsx",
+    "src/services/": "Standalone services: firebase.ts (web SDK init), getDirectionsHere.ts",
+    "src/theme/": "Theme definitions; index.ts barrel",
+    "src/translations/": "i18n strings; index.ts barrel",
+    "src/types/": "Global TypeScript types",
+    "src/utils/": "Global utility functions"
+  },
+
+  "functionsTree": {
+    "functions/index.js": "Central export registry — every function MUST be exported here",
+    "functions/app/": "httpsCallable functions (onCall v2)",
+    "functions/app/chat/chatv2.js": "Chat callables + triggers (listChannels, insertMessage, etc.)",
+    "functions/app/openai/openai.js": "AI chat callables (insertMessageAI, createChannelAI)",
+    "functions/app/jobs/": "assignCarrierProjectJob",
+    "functions/app/tickets/": "processJobTicket",
+    "functions/app/tripRequest/": "getFullTripRequest (exported as 'triprequest')",
+    "functions/app/vendorUser/": "createVendorUser",
+    "functions/core/collections.js": "live/historical subcollection helpers (getList, add, remove, etc.)",
+    "functions/core/user.js": "fetchUser, fetchUserByEmail, updateUser",
+    "functions/landing/": "Investor voice agent: saveInvestorTurn.js, finalizeInvestorSession.js, openai/",
+    "functions/notifications/utils.js": "sendPushNotification helper",
+    "functions/triggers/": "Firestore triggers (onDocumentCreated/Updated/Written)",
+    "functions/triggers/triggers.js": "propagateUserProfileUpdates trigger",
+    "functions/triggers/deels/": "onRequestUpdated, onVendorRequestUpdated",
+    "functions/triggers/distributeRequest/distributeRequest.js": "onRequestCreated fan-out",
+    "functions/triggers/inspections/": "onVehicleInspectionCreated/Updated, driverChange",
+    "functions/triggers/projects/onSetupFlagWritten.js": "Dual-party project setup gate",
+    "functions/utils/harversine.js": "Haversine distance calculation"
+  },
+
+  "screenPatterns": {
+    "folderPattern": {
+      "description": "Screen has its own directory containing ScreenName.tsx + styles.ts",
+      "example": "src/modules/projects/screens/shared/ProjectDetailsScreen/ProjectDetailsScreen.tsx",
+      "stylesFile": "src/modules/projects/screens/shared/ProjectDetailsScreen/styles.ts",
+      "whenUsed": "Preferred in modules/ and when screen has step subcomponents or modals alongside it"
+    },
+    "flatFilePattern": {
+      "description": "Screen is a single .tsx file directly in the screens/ subdirectory",
+      "example": "src/carrier/screens/Deals/HomeDealsScreen.tsx",
+      "stylesFile": "src/carrier/screens/Deals/styles.ts (shared across flat files in same dir)",
+      "whenUsed": "Common in role-level screens (carrier/, driver/, finder/)"
+    },
+    "indexVariant": {
+      "description": "Folder with index.tsx instead of ScreenName.tsx",
+      "example": "src/core/profile/screens/MyProfileScreen/index.tsx",
+      "note": "Rare — only observed in core/profile. Prefer explicit ScreenName.tsx in new code."
+    },
+    "stylesConvention": "dynamicStyles function: (theme: any, appearance: any) => StyleSheet.create({...}). Import as: import { dynamicStyles } from './styles' or import dynamicStyles from './styles'",
+    "recommendation": "Use folder pattern (ScreenName/ScreenName.tsx + styles.ts) for all new screens."
+  },
+
+  "hookPatterns": {
+    "location": "src/{role}/hooks/useHookName.ts — flat file directly in hooks/",
+    "moduleLocation": "src/modules/{module}/hooks/useHookName.ts or hooks/{subrole}/useHookName.ts",
+    "namingConvention": "camelCase starting with 'use': useVendorRequestsList, useCarrierJobsList",
+    "returnShape": "{ data, loading, error } — always three fields",
+    "testLocation": "src/{role}/hooks/__tests__/useHookName.test.ts",
+    "testLocationModules": "src/modules/{module}/hooks/__tests__/ (uncertain — only two __tests__ dirs observed)",
+    "examples": [
+      "src/carrier/hooks/useVendorRequestsList.ts",
+      "src/carrier/hooks/useCarrierJobsList.ts",
+      "src/driver/hooks/useAssignedJobs.ts",
+      "src/modules/inspections/hooks/useFullInspectionDetails.ts",
+      "src/modules/projects/hooks/shared/useProjectDetails.ts"
+    ]
+  },
+
+  "importPaths": {
+    "noAliases": true,
+    "allImportsRelative": true,
+    "firebaseConfig": {
+      "import": "import { db } from '../../core/firebase/config'",
+      "note": "Depth varies by file location. Always resolve relative to file, not to src/.",
+      "depthExamples": {
+        "src/carrier/hooks/useX.ts": "../../core/firebase/config",
+        "src/modules/inspections/hooks/useX.ts": "../../../core/firebase/config",
+        "src/modules/projects/hooks/shared/useX.ts": "../../../../core/firebase/config",
+        "src/modules/projects/screens/shared/ScreenName/ScreenName.tsx": "../../../../../core/firebase/config"
+      }
+    },
+    "useAuth": {
+      "import": "import { useCurrentUser } from '../../core/onboarding/hooks/useAuth'",
+      "note": "Same relative depth rule applies"
+    },
+    "dopebase": {
+      "import": "import { useTheme, useTranslations } from '../../core/dopebase'",
+      "exports": ["useTheme", "useTranslations", "useActionSheet", "ActionSheetProvider", "DopebaseProvider", "BottomSheet"]
+    },
+    "crossRoleToModule": {
+      "description": "Role code importing from modules/ — confirmed pattern",
+      "example": "src/carrier/navigation/CarrierRootNavigator.tsx imports from ../../modules/aiSupport/screens/...",
+      "allowed": true
+    },
+    "moduleToCore": {
+      "description": "Module code importing from core/ — confirmed pattern",
+      "example": "src/modules/projects/screens/.../ProjectDetailsScreen.tsx imports from ../../../../../core/dopebase",
+      "allowed": true
+    },
+    "crossRoleForbidden": {
+      "description": "carrier/ must NOT import from driver/ or finder/. driver/ must NOT import from carrier/ or finder/. finder/ must NOT import from carrier/ or driver/.",
+      "allowed": false
+    },
+    "moduleToCrossRole": {
+      "description": "modules/ must NOT import from carrier/, driver/, or finder/",
+      "allowed": false
+    },
+    "intraModuleExample": {
+      "file": "src/modules/aiSupport/screens/SupportAssistantScreen/SupportAssistantScreen.tsx",
+      "imports": [
+        "import { useTheme, useTranslations } from '../../../../core/dopebase'",
+        "import { SupportContext, SupportMessage } from '../../types'",
+        "import { useSupportAssistant } from '../../hooks/useSupportAssistant'",
+        "import SupportMessageBubble from '../../components/SupportMessageBubble'"
+      ]
+    }
+  },
+
+  "depthReference": {
+    "note": "Count directories from file location up to src/. Then add path to target.",
+    "table": [
+      { "file": "src/carrier/hooks/useX.ts", "depthToSrc": 2, "coreFirebase": "../../core/firebase/config" },
+      { "file": "src/carrier/screens/Deals/HomeDealsScreen.tsx", "depthToSrc": 3, "coreFirebase": "../../../core/firebase/config", "coreDopebase": "../../../core/dopebase" },
+      { "file": "src/modules/inspections/hooks/useX.ts", "depthToSrc": 3, "coreFirebase": "../../../core/firebase/config" },
+      { "file": "src/modules/projects/hooks/shared/useX.ts", "depthToSrc": 4, "coreFirebase": "../../../../core/firebase/config" },
+      { "file": "src/modules/projects/screens/shared/ProjectDetailsScreen/ProjectDetailsScreen.tsx", "depthToSrc": 5, "coreFirebase": "../../../../../core/firebase/config", "coreDopebase": "../../../../../core/dopebase" },
+      { "file": "src/modules/aiSupport/screens/SupportAssistantScreen/SupportAssistantScreen.tsx", "depthToSrc": 4, "coreDopebase": "../../../../core/dopebase" }
+    ]
+  },
+
+  "barrelExports": {
+    "present": [
+      "src/carrier/hooks/home/index.ts",
+      "src/carrier/components/ManagerHome/index.ts",
+      "src/carrier/types/home/index.ts",
+      "src/carrier/utils/home/index.ts",
+      "src/core/chat/api/index.ts",
+      "src/core/chat/index.ts",
+      "src/core/dopebase/index.tsx",
+      "src/core/media/index.ts",
+      "src/core/onboarding/api/index.ts",
+      "src/core/onboarding/index.tsx",
+      "src/modules/vehicleExpenses/index.ts",
+      "src/redux/index.ts",
+      "src/theme/index.ts",
+      "src/translations/index.ts"
+    ],
+    "absent": "Most hooks/ and screens/ directories do NOT have index.ts barrels. Import individual files directly.",
+    "pattern": "Barrels exist at subdomain boundaries (e.g., core/chat/api/, core/dopebase/), not at every directory level."
+  },
+
+  "testConventions": {
+    "framework": "jest-expo preset",
+    "location": "src/{role}/hooks/__tests__/useHookName.test.ts",
+    "confirmed": [
+      "src/carrier/hooks/__tests__/useVendorRequestsList.test.ts",
+      "src/core/profile/hooks/__tests__/useUpdateUserProfile.test.ts"
+    ],
+    "globalMocks": "__mocks__/react-native-reanimated.js (repo root)",
+    "moduleNameMapper": "react-native-reanimated → __mocks__/react-native-reanimated.js",
+    "hookFromHookImport": "import useHookName from '../useHookName' (one level up from __tests__/)",
+    "coreFromTest": "import { useCurrentUser } from '../../../core/onboarding/hooks/useAuth'",
+    "mockPattern": [
+      "jest.mock('../../../core/onboarding/hooks/useAuth')",
+      "jest.mock('firebase/firestore', () => ({ onSnapshot: jest.fn(), ... }))",
+      "jest.mock('../../../core/firebase/config', () => ({ db: {} }))"
+    ],
+    "renderHook": "Use renderHook from '@testing-library/react-native' — NOT from @testing-library/react-hooks (deprecated)"
+  },
+
+  "functionsConventions": {
+    "moduleSystem": "CommonJS — require() and module.exports/exports.X",
+    "noESModules": "Do NOT use import/export in functions/",
+    "registrationRequired": "Every new function MUST be added to functions/index.js",
+    "indexPattern": "const mod = require('./app/domain/file'); exports.functionName = mod.exportedName;",
+    "authPattern": "const uid = request.auth?.uid; if (!uid) throw new HttpsError('unauthenticated', '...')",
+    "sharedUtils": "require('../../core/collections') and require('../../core/user') for Firestore helpers",
+    "newFunctionPath": "functions/app/{domain}/{functionName}.js for callables; functions/triggers/{domain}/{triggerName}.js for triggers"
+  },
+
+  "forbiddenImports": [
+    { "from": "src/carrier/", "forbidden": ["src/driver/", "src/finder/"], "reason": "Role isolation" },
+    { "from": "src/driver/", "forbidden": ["src/carrier/", "src/finder/"], "reason": "Role isolation" },
+    { "from": "src/finder/", "forbidden": ["src/carrier/", "src/driver/"], "reason": "Role isolation" },
+    { "from": "src/modules/", "forbidden": ["src/carrier/", "src/driver/", "src/finder/"], "reason": "Modules must not depend on role-specific code — they are consumed by roles, not the reverse" }
+  ],
+
+  "allowedImports": [
+    { "from": "src/carrier/", "allowed": ["src/core/", "src/modules/", "src/redux/", "src/config/", "src/utils/", "src/types/"] },
+    { "from": "src/driver/", "allowed": ["src/core/", "src/modules/", "src/redux/", "src/config/", "src/utils/", "src/types/"] },
+    { "from": "src/finder/", "allowed": ["src/core/", "src/modules/", "src/redux/", "src/config/", "src/utils/", "src/types/"] },
+    { "from": "src/modules/", "allowed": ["src/core/", "src/redux/", "src/config/", "src/utils/", "src/types/"] },
+    { "from": "src/core/", "allowed": ["src/redux/", "src/config/", "src/utils/", "src/types/"] }
+  ],
+
+  "uncertainConventions": [
+    "Whether driver/hooks/ will get a __tests__/ subdirectory — only carrier and core/profile confirmed",
+    "Whether modules/{module}/hooks/ should have __tests__/ subdirectory — no examples observed",
+    "Whether new modules should have a types.ts at module root or a types/ subdirectory — aiSupport uses flat types.ts, no types/ dir observed",
+    "Exact index.ts barrel convention for new role-level hook subdirectories — only carrier/hooks/home/ confirmed"
+  ]
+}
