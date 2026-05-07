@@ -347,6 +347,57 @@ Every voice feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every voice-agent-elevenlabs-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `voice-session-lifecycle` | Defines the complete audio recording lifecycle (expo-av): permissions, Audio mode config, Recording useRef pattern, start/stop/send flow, state machine. |
+| `AI-session-orchestration` | Voice sessions persist turns to Firestore subcollections, not array fields. Defines saveInvestorTurn model, finalizeSession, and context hydration with status gate. |
+| `testing-guide` | Voice tests use mocked audio adapters. Factory never tests real audio streaming, production voice APIs, or live phone routing. |
+
+## Optional Building Blocks
+
+Include when the feature plan declares the matching need:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `AI-workflow-pipeline` | Voice session uses post-session structured extraction (Chat Completions + json_object for transcript analysis). |
+| `assistant-session-persistence` | Voice agent requires thread-channel binding (Assistants API) or turn-by-turn subcollection persistence. |
+| `callable-function-pattern` | Backend Cloud Function generates ElevenLabs tokens, manages session state, or processes voice data server-side. |
+| `cloud-function-structure` | Cloud Function follows LogiTruck import conventions and index.js export pattern. |
+| `loading-empty-error-state` | Voice UI has three states: idle, recording/connecting, error/disconnected. |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L2` — Claude Code integration required |
+| `riskLevelDefault` | `high` |
+| `factoryCanAutoRetry` | `true` for voice UI shell and session reducers only |
+| `requiresClaudeCodeReview` | mandatory — realtime infrastructure, audio permissions, latency |
+| `validationCommands` | `npm run build`, `tsc --noEmit` |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Factory generates voice UI shell and transcript display | L1 — factory can generate |
+| Factory generates session state machines and mock adapters | L1 — factory can generate |
+| ElevenLabs production integration | L2 — Claude Code required |
+| WebRTC or audio streaming configuration | L2 — Claude Code required |
+| Production launch of voice features | L3 — human approval required |
+| Customer-facing voice scripts or personas | L3 — human approval required |
+| Investor-facing voice statements | L3 — human approval required |
+| Outbound voice automation | L3 — human approval required |
+| Factory cannot expose production voice API keys | L4 — prohibited |
+| Factory cannot configure production WebRTC or phone routing | L4 — prohibited |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

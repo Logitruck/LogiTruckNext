@@ -259,6 +259,38 @@
       }
     },
 
+    "selectedBuildingBlocks": {
+      "description": "Building blocks explicitly selected for this plan. Merged with archetype defaults to produce resolvedBuildingBlocks. Only blocks physically present in factory/building-blocks/ are valid.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "required", "reason"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Exact filename without .md extension. Must exist in factory/building-blocks/."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "true = always include; false = include only if in archetype optionalBuildingBlocks"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this building block is needed for this specific feature."
+          }
+        }
+      }
+    },
+
+    "resolvedBuildingBlocks": {
+      "description": "Final deduplicated list of building blocks resolved by the factory. Computed as: dedupe(archetype.defaultBuildingBlocks ∪ selectedBuildingBlocks). Factory loads these .md files to build the context bundle for Haiku.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Building block name without .md extension."
+      }
+    },
+
     "acceptanceCriteria": {
       "type": "array",
       "items": {

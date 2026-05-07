@@ -328,6 +328,55 @@ Every Cloud Function feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every cloud-function-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `callable-function-pattern` | Canonical onCall v2 structure: auth check first, input validation, precondition reads, business writes, typed return. HttpsError for all error paths. |
+| `callable-auth-pattern` | Documents v2 auth pattern (request.auth?.uid), ownership checks, validateRequiredFields helper, and the broken v1 pattern in stripeconnect.js to avoid. |
+| `cloud-function-structure` | Import conventions, function types (onCall/onRequest/onDocumentCreated/onDocumentUpdated/onSchedule), logging with emoji prefixes, index.js export registry. |
+| `testing-guide` | Cloud function tests mock Firestore and validate payload validation, auth guard, and idempotency logic. |
+
+## Optional Building Blocks
+
+Include when the feature plan declares the matching need:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `firestore-trigger-pattern` | Function is a Firestore trigger (onDocumentCreated/Updated). Requires re-entry guard and projection helper pattern. |
+| `event-driven-orchestration` | Function implements status machine transitions with before/after diff, batch writes, or fan-out orchestration. |
+| `firestore-trigger-orchestration` | Feature involves multiple interdependent triggers (e.g., bidirectional sync between requests and vendor_requests). |
+| `idempotent-event-processing` | Function could be called multiple times for the same event (Cloud Tasks, client retries, manual re-triggers). |
+| `notification-trigger-pattern` | Function sends push notifications as part of its workflow. |
+| `cloud-task-orchestration` | Function must fan-out over an unbounded collection (>50 items). Synchronous loop inside trigger will timeout. |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L1` — factory + Claude Code review |
+| `riskLevelDefault` | `medium` |
+| `factoryCanAutoRetry` | `true` (TypeScript, payload validation failures) |
+| `requiresClaudeCodeReview` | yes — auth pattern, idempotency, index.js export |
+| `validationCommands` | `jest`, `tsc --noEmit`, `npm run lint` |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Function is simple onCall with auth + single Firestore write | L1 |
+| Function creates a Firestore trigger | L2 — Claude Code must validate re-entry guard |
+| Function requires Cloud Tasks fan-out | L2 — Claude Code provisions queue |
+| Function sends push notifications | L2 — Claude Code must verify FCM token logic |
+| Function processes payments or webhooks | L3 — human approval |
+| Factory cannot deploy functions to production | L4 — prohibited |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

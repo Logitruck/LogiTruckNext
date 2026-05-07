@@ -319,6 +319,58 @@ Every AI support feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every ai-support-agent-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `hook-service-pattern` | AI chat screens use the same three-layer hook → service → Firestore architecture as all other screens. |
+| `screen-hook-separation` | AI assistant UI must not contain session orchestration logic directly. All AI state flows through hooks. |
+| `loading-empty-error-state` | AI screens have three states: typing/pending, response received, and error/fallback. |
+| `AI-session-orchestration` | Defines the turn-by-turn Firestore persistence pattern, saveInvestorTurn model, finalizeSession, and context hydration lifecycle. |
+| `testing-guide` | AI tests use mocked AI adapters. Never test against live OpenAI or ElevenLabs APIs. |
+
+## Optional Building Blocks
+
+Include when the feature plan declares the matching need:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `AI-workflow-pipeline` | Feature involves structured data extraction from AI (Chat Completions + json_object, Responses API + json_schema, or Assistants API). |
+| `assistant-session-persistence` | Feature requires persistent AI thread binding to Firestore channel (Assistants API thread-channel pattern). |
+| `callable-function-pattern` | Feature has a Cloud Function backend that receives AI requests from the mobile client. |
+| `callable-auth-pattern` | Cloud Function backend requires authenticated calls from signed-in users. |
+| `cloud-function-structure` | Cloud Function file must follow LogiTruck import conventions and index.js export pattern. |
+| `idempotent-event-processing` | AI session creation or channel creation must be idempotent (createChannelAI pattern). |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L1` — factory + Claude Code review |
+| `riskLevelDefault` | `high` |
+| `factoryCanAutoRetry` | `true` for UI and session reducers; `false` for AI orchestration |
+| `requiresClaudeCodeReview` | yes — prompt safety, escalation routing, session lifecycle |
+| `validationCommands` | `jest`, `tsc --noEmit` |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Factory generates chat UI and session state reducers | L1 — factory can generate |
+| Factory generates prompt templates and escalation UI | L1 — factory can generate |
+| Production AI orchestration or realtime integration | L2 — Claude Code required |
+| AI memory architecture decisions | L2 — Claude Code required |
+| Escalation policies for customer-facing AI | L3 — human approval |
+| Automated dispatch rules driven by AI | L3 — human approval |
+| Factory cannot expose production OpenAI API keys | L4 — prohibited |
+| Factory cannot deploy autonomous agents | L4 — prohibited |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

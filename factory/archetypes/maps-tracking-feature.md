@@ -310,6 +310,54 @@ Every maps/tracking feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every maps-tracking-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `screen-hook-separation` | Map screens must never call Firestore directly. Location data flows through dedicated hooks. |
+| `hook-service-pattern` | Location and tracking hooks follow the three-layer pattern with cleanup contract. |
+| `realtime-firestore-listener` | Tracking features require real-time Firestore sync for driver position updates. |
+| `loading-empty-error-state` | Map screens must handle loading (GPS acquiring), empty (no route), and error (location denied) states. |
+| `testing-guide` | Factory tests JS logic only: ETA formatting, polyline parsing, deviation detection. Never native GPS or real map rendering. |
+
+## Optional Building Blocks
+
+Include when the feature plan declares the matching need:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `async-lookup-then-subscribe` | Tracking hook requires vendorID/vehicleID lookup before subscribing to location collection. |
+| `trip-status-machine` | Feature involves trip status transitions (assigned → loaded → en_route → completed). |
+| `route-rendering-pattern` | Feature adds a new screen to the Driver or Carrier navigator. |
+| `idempotent-event-processing` | Feature writes location updates that must avoid duplicate writes (throttling, dedup). |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L2` — Claude Code integration required |
+| `riskLevelDefault` | `high` |
+| `factoryCanAutoRetry` | `true` for pure JS (ETA, polyline, deviation); `false` for screen integration |
+| `requiresClaudeCodeReview` | yes — native compatibility, location permissions, simulator validation |
+| `validationCommands` | `jest`, `tsc --noEmit` (JS only; no native runtime testing) |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Feature is pure JS: ETA formatting, polyline parsing, distance calc | L1 — factory can generate |
+| Feature requires location hook or tracking reducer | L2 — Claude Code integration |
+| Feature requires Firestore location sync | L2 — Claude Code integration |
+| Feature requires native map SDK installation | L3 — Claude Code + human approval |
+| Feature modifies iOS/Android location permissions | L3 — human approval |
+| Feature requires Expo plugin changes or expo prebuild | L4 — prohibited for factory |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

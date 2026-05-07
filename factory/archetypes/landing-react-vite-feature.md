@@ -346,6 +346,56 @@ Every landing feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every landing-react-vite-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `loading-empty-error-state` | Landing pages with Firebase persistence or AI integration must handle loading, empty, and error states. Lead capture forms must show feedback states. |
+| `testing-guide` | Landing tests cover form validation, payload builders, section rendering, and pure helpers. Never test real CRM calls or live AI APIs. |
+
+## Optional Building Blocks
+
+Include when the feature plan declares the matching need:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `AI-session-orchestration` | Landing includes an AI voice or chat agent with turn-by-turn Firestore persistence. |
+| `AI-workflow-pipeline` | Landing uses post-session analysis (transcript → GPT-4o → structured lead qualification data). |
+| `voice-session-lifecycle` | Landing includes a voice recorder component or ElevenLabs voice agent UI. |
+| `assistant-session-persistence` | Landing persists AI conversation turns to Firestore for CRM analysis or lead qualification. |
+| `idempotent-event-processing` | Landing creates Firestore documents (lead records, session records) that must not be duplicated on retry. |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L1` — factory + Claude Code review |
+| `riskLevelDefault` | `medium` (escalates to high when AI voice or CRM is connected) |
+| `factoryCanAutoRetry` | `true` for static sections, lead capture UI, component generation |
+| `requiresClaudeCodeReview` | yes — environment config, Firebase rules, CRM integration |
+| `validationCommands` | `npm run build`, `npm run test -- --run` |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Factory generates static sections and React components | L1 — factory can generate |
+| Factory generates lead capture UI and Firebase helpers | L1 — factory can generate |
+| Production deployment (Firebase Hosting, Vercel, Netlify) | L2 — Claude Code required |
+| GHL webhook integration | L2 — Claude Code required |
+| Production AI voice integration | L2 — Claude Code required |
+| Investor-facing claims or financial projections | L3 — human approval required |
+| Legal disclaimers or fundraising language | L3 — human approval required |
+| Production CRM automations that contact real leads | L3 — human approval required |
+| Factory cannot expose API keys in frontend code | L4 — prohibited |
+| Factory cannot modify DNS or hosting infrastructure | L4 — prohibited |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

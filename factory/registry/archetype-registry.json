@@ -1,0 +1,463 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LogiTruck Factory Archetype Registry",
+  "version": "1.0.0",
+  "description": "Formal registry connecting each feature archetype to its required and optional building blocks. Used by the factory to resolve context bundles automatically.",
+  "buildingBlocksBasePath": "factory/building-blocks/",
+  "archetypes": {
+    "utility-feature": {
+      "description": "Pure TypeScript utilities, formatters, validators, converters, small helpers. Zero Firebase, zero React, deterministic input/output.",
+      "defaultBuildingBlocks": [
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [],
+      "executionLevelDefault": "L0",
+      "riskLevelDefault": "low",
+      "allowedScopes": [
+        "src/utils/",
+        "src/services/<domain>/utils/",
+        "src/modules/<module>/utils/",
+        "functions/utils/",
+        "apps/web/<landing>/src/utils/",
+        "shared/utils/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [],
+        "escalateToL2": [
+          "utility affects payment calculations",
+          "utility affects auth or security behavior",
+          "utility requires new npm dependency"
+        ],
+        "escalateToL3": [
+          "utility affects pricing, commissions, fees, or payouts",
+          "utility affects investor returns or financial claims",
+          "utility involves compliance or regulatory logic"
+        ],
+        "escalateToL4": []
+      },
+      "notes": "Ideal entry point for factory validation. Pure, isolated, deterministic. No Firebase, no React, no network calls."
+    },
+
+    "mobile-screen-feature": {
+      "description": "React Native screens across Carrier, Driver, and Finder roles. Hook-driven architecture with loading/empty/error states and navigation params.",
+      "defaultBuildingBlocks": [
+        "screen-hook-separation",
+        "hook-service-pattern",
+        "loading-empty-error-state",
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "realtime-firestore-listener",
+        "async-lookup-then-subscribe",
+        "route-rendering-pattern"
+      ],
+      "executionLevelDefault": "L1",
+      "riskLevelDefault": "medium",
+      "allowedScopes": [
+        "src/carrier/screens/",
+        "src/driver/screens/",
+        "src/finder/screens/",
+        "src/modules/<module>/screens/",
+        "src/core/components/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "screen uses Firestore realtime listener",
+          "screen has operational action buttons"
+        ],
+        "escalateToL2": [
+          "screen modifies navigation root",
+          "screen requires deep linking changes",
+          "screen touches auth or session state",
+          "screen requires map rendering",
+          "screen requires native module access"
+        ],
+        "escalateToL3": [
+          "screen exposes safety-critical operational UI",
+          "screen exposes customer-facing operational messaging"
+        ],
+        "escalateToL4": []
+      },
+      "notes": "Screen files must never contain Firestore calls directly. All data comes through hooks. Navigation changes to existing tab/drawer roots require Claude Code review."
+    },
+
+    "firestore-feature": {
+      "description": "Firestore hooks, realtime listeners, collection queries, document sync, role-based data access patterns.",
+      "defaultBuildingBlocks": [
+        "hook-service-pattern",
+        "realtime-firestore-listener",
+        "loading-empty-error-state",
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "async-lookup-then-subscribe",
+        "idempotent-event-processing"
+      ],
+      "executionLevelDefault": "L1",
+      "riskLevelDefault": "medium",
+      "allowedScopes": [
+        "src/carrier/hooks/",
+        "src/driver/hooks/",
+        "src/finder/hooks/",
+        "src/modules/<module>/hooks/",
+        "src/core/firebase/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "hook requires multi-listener setup",
+          "hook requires role-based query filtering"
+        ],
+        "escalateToL2": [
+          "hook requires async lookup before subscribe (use async-lookup-then-subscribe)",
+          "hook touches multiple collections in a single effect",
+          "hook requires security rules validation",
+          "hook requires Firestore index creation",
+          "hook involves AI session persistence"
+        ],
+        "escalateToL3": [
+          "hook performs destructive migrations",
+          "hook touches compliance-sensitive data",
+          "hook exposes customer-visible private data"
+        ],
+        "escalateToL4": [
+          "factory cannot deploy Firestore security rules",
+          "factory cannot execute production data migrations"
+        ]
+      },
+      "notes": "All async-lookup-before-subscribe patterns MUST use the ref+cancelled pattern from async-lookup-then-subscribe.md. Never use .then() chains that discard the unsubscribe return."
+    },
+
+    "cloud-function-feature": {
+      "description": "Firebase Cloud Functions v2: callable functions, HTTP endpoints, Firestore triggers, scheduled jobs, background orchestration.",
+      "defaultBuildingBlocks": [
+        "callable-function-pattern",
+        "callable-auth-pattern",
+        "cloud-function-structure",
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "firestore-trigger-pattern",
+        "event-driven-orchestration",
+        "firestore-trigger-orchestration",
+        "idempotent-event-processing",
+        "notification-trigger-pattern",
+        "cloud-task-orchestration"
+      ],
+      "executionLevelDefault": "L1",
+      "riskLevelDefault": "medium",
+      "allowedScopes": [
+        "functions/app/",
+        "functions/triggers/",
+        "functions/core/",
+        "functions/utils/",
+        "functions/notifications/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "function is a simple onCall with auth + Firestore write"
+        ],
+        "escalateToL2": [
+          "function creates a Firestore trigger",
+          "function uses Cloud Tasks fan-out",
+          "function sends push notifications",
+          "function integrates with external APIs (not OpenAI/ElevenLabs)",
+          "function touches auth or session state",
+          "function requires Firebase emulator validation"
+        ],
+        "escalateToL3": [
+          "function processes payments",
+          "function deploys to production",
+          "function involves billing-sensitive operations",
+          "function makes compliance assumptions"
+        ],
+        "escalateToL4": [
+          "factory cannot deploy functions to production",
+          "factory cannot configure Firebase secrets",
+          "factory cannot modify production indexes"
+        ]
+      },
+      "notes": "Every onCall function MUST have auth check as the first statement using request.auth?.uid. Never use data.auth (v1 pattern). All errors must use HttpsError not plain Error. Export must be added to functions/index.js."
+    },
+
+    "maps-tracking-feature": {
+      "description": "Realtime driver tracking, route rendering, ETA calculations, polyline parsing, location sync, trip progression state machine.",
+      "defaultBuildingBlocks": [
+        "screen-hook-separation",
+        "hook-service-pattern",
+        "realtime-firestore-listener",
+        "loading-empty-error-state",
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "async-lookup-then-subscribe",
+        "trip-status-machine",
+        "route-rendering-pattern",
+        "idempotent-event-processing"
+      ],
+      "executionLevelDefault": "L2",
+      "riskLevelDefault": "high",
+      "allowedScopes": [
+        "src/driver/screens/",
+        "src/carrier/screens/",
+        "src/core/components/maps/",
+        "src/core/components/tracking/",
+        "src/services/maps/",
+        "src/services/tracking/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "feature involves pure JS: ETA formatting, polyline parsing, distance calc"
+        ],
+        "escalateToL2": [
+          "feature requires location hooks or tracking reducers",
+          "feature requires Firestore location sync",
+          "feature requires map screen rendering"
+        ],
+        "escalateToL3": [
+          "feature requires native map SDK installation",
+          "feature modifies iOS/Android location permissions",
+          "feature requires Expo plugin changes",
+          "feature requires background location tracking"
+        ],
+        "escalateToL4": [
+          "factory cannot install native map libraries",
+          "factory cannot modify app.json or Expo plugins",
+          "factory cannot run expo prebuild"
+        ]
+      },
+      "notes": "Factory scope is limited to pure JS tracking logic. Any native map SDK, background location, or Expo plugin changes require Claude Code escalation. HomeTrackingScreen and Driver navigation root are protected."
+    },
+
+    "native-integration-feature": {
+      "description": "Native SDK installation planning, Expo plugin impact analysis, iOS/Android config planning, background services, push native setup, voice/audio native integrations.",
+      "defaultBuildingBlocks": [
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "voice-session-lifecycle",
+        "route-rendering-pattern",
+        "loading-empty-error-state"
+      ],
+      "executionLevelDefault": "L2",
+      "riskLevelDefault": "critical",
+      "allowedScopes": [
+        "factory/output/",
+        "tmp/logitruck-<feature>/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "factory generates TypeScript service drafts and mock adapters"
+        ],
+        "escalateToL2": [
+          "ALL native-integration-feature execution requires Claude Code",
+          "factory output is a handoff package only"
+        ],
+        "escalateToL3": [
+          "native permission changes require human approval (location, microphone, camera)",
+          "production rollout requires human approval"
+        ],
+        "escalateToL4": [
+          "factory cannot install native dependencies in production repo",
+          "factory cannot run pod install",
+          "factory cannot modify Gradle or Xcode project settings",
+          "factory cannot run expo prebuild against production"
+        ]
+      },
+      "notes": "This archetype produces a handoff package only. The factory generates plans, risk checklists, TypeScript service drafts, and mock layers. Claude Code owns all native integration, build validation, and production commit."
+    },
+
+    "payments-stripe-connect-feature": {
+      "description": "Stripe Connect onboarding, carrier payouts, payment intents, webhook processing, transaction tracking, escrow-like operational payment flows.",
+      "defaultBuildingBlocks": [
+        "callable-function-pattern",
+        "callable-auth-pattern",
+        "cloud-function-structure",
+        "idempotent-event-processing",
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "stripe-payment-intent-lifecycle",
+        "event-driven-orchestration",
+        "firestore-trigger-pattern",
+        "notification-trigger-pattern"
+      ],
+      "executionLevelDefault": "L2",
+      "riskLevelDefault": "critical",
+      "allowedScopes": [
+        "functions/app/stripe/",
+        "src/modules/payments/",
+        "src/carrier/screens/payments/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "factory generates UI payment state screens",
+          "factory generates payload builders and reducers"
+        ],
+        "escalateToL2": [
+          "ALL Stripe function integration requires Claude Code review",
+          "webhook validation requires Claude Code",
+          "environment and secret configuration requires Claude Code"
+        ],
+        "escalateToL3": [
+          "production payout logic requires legal/human approval",
+          "onboarding requirements require legal/human approval",
+          "compliance assumptions require human approval",
+          "transaction fee models require human approval"
+        ],
+        "escalateToL4": [
+          "factory cannot use production Stripe keys",
+          "factory cannot execute live payouts",
+          "factory cannot deploy production payment flows"
+        ]
+      },
+      "notes": "CRITICAL: stripeconnect.js currently has a v1 onCall auth vulnerability (data.auth instead of request.auth). Factory always uses request.auth?.uid. Idempotency guards required on all Stripe account creation. Webhook handler for account.updated is always required alongside createStripeAccount."
+    },
+
+    "ai-support-agent-feature": {
+      "description": "AI-powered support and operational assistant features: chat UI, session orchestration, prompt templates, Firebase session persistence, escalation flows.",
+      "defaultBuildingBlocks": [
+        "hook-service-pattern",
+        "screen-hook-separation",
+        "loading-empty-error-state",
+        "AI-session-orchestration",
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "AI-workflow-pipeline",
+        "assistant-session-persistence",
+        "callable-function-pattern",
+        "callable-auth-pattern",
+        "cloud-function-structure",
+        "idempotent-event-processing"
+      ],
+      "executionLevelDefault": "L1",
+      "riskLevelDefault": "high",
+      "allowedScopes": [
+        "src/modules/aiSupport/",
+        "src/carrier/screens/",
+        "src/driver/screens/",
+        "src/finder/screens/",
+        "functions/app/openai/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "factory generates chat UI and session state reducers",
+          "factory generates prompt templates and escalation UI"
+        ],
+        "escalateToL2": [
+          "production AI orchestration requires Claude Code",
+          "realtime AI integration requires Claude Code",
+          "AI memory architecture requires Claude Code",
+          "cross-service AI orchestration requires Claude Code"
+        ],
+        "escalateToL3": [
+          "escalation policies require human approval",
+          "customer messaging requires human approval",
+          "automated dispatch rules require human approval",
+          "production AI rollout requires human approval"
+        ],
+        "escalateToL4": [
+          "factory cannot expose production API keys",
+          "factory cannot deploy autonomous agents",
+          "factory cannot trigger live operational actions"
+        ]
+      },
+      "notes": "AI support agents are assistants, not autonomous operators. Every AI flow must define an escalation path. Turn storage MUST use Firestore subcollections, not array fields. Polling loops (while status !== completed) are forbidden — use createAndPoll with timeoutSeconds:120."
+    },
+
+    "voice-agent-elevenlabs-feature": {
+      "description": "Realtime voice agent experiences: AI voice onboarding, investor/driver/dispatch voice assistants, embedded landing voice agents, session orchestration.",
+      "defaultBuildingBlocks": [
+        "voice-session-lifecycle",
+        "AI-session-orchestration",
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "AI-workflow-pipeline",
+        "assistant-session-persistence",
+        "callable-function-pattern",
+        "cloud-function-structure",
+        "loading-empty-error-state"
+      ],
+      "executionLevelDefault": "L2",
+      "riskLevelDefault": "high",
+      "allowedScopes": [
+        "src/modules/voiceAgent/",
+        "apps/web/<landing>/src/",
+        "functions/app/openai/",
+        "functions/landing/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "factory generates voice UI shell and transcript display",
+          "factory generates session state machines and mock adapters"
+        ],
+        "escalateToL2": [
+          "ElevenLabs production integration requires Claude Code",
+          "WebRTC configuration requires Claude Code",
+          "audio streaming debugging requires Claude Code",
+          "Twilio/SIP integrations require Claude Code"
+        ],
+        "escalateToL3": [
+          "production launch requires human approval",
+          "customer-facing scripts require human approval",
+          "investor-facing voice statements require human approval",
+          "outbound voice automation requires human approval",
+          "recording and privacy rules require human approval"
+        ],
+        "escalateToL4": [
+          "factory cannot expose production voice API keys",
+          "factory cannot deploy live realtime WebRTC infrastructure",
+          "factory cannot configure production phone routing"
+        ]
+      },
+      "notes": "Voice session storage MUST use Firestore subcollection turns, not array fields. Context documents must have status gate (status === approved). Driver voice features must minimize distraction and avoid requiring visual interaction while driving."
+    },
+
+    "landing-react-vite-feature": {
+      "description": "React/Vite web landing projects: investor landings, shipper landings, lead capture pages, AI voice landing experiences, conversion funnels.",
+      "defaultBuildingBlocks": [
+        "loading-empty-error-state",
+        "testing-guide"
+      ],
+      "optionalBuildingBlocks": [
+        "AI-session-orchestration",
+        "AI-workflow-pipeline",
+        "voice-session-lifecycle",
+        "assistant-session-persistence",
+        "idempotent-event-processing"
+      ],
+      "executionLevelDefault": "L1",
+      "riskLevelDefault": "medium",
+      "allowedScopes": [
+        "apps/web/<landing-name>/src/",
+        "apps/web/<landing-name>/public/"
+      ],
+      "escalationRules": {
+        "escalateToL1": [
+          "factory generates static sections, lead capture UI, React components"
+        ],
+        "escalateToL2": [
+          "production deployment requires Claude Code",
+          "Firebase Hosting/Vercel/Netlify setup requires Claude Code",
+          "GHL webhook integration requires Claude Code",
+          "production AI voice integration requires Claude Code",
+          "CORS issues require Claude Code"
+        ],
+        "escalateToL3": [
+          "investor-facing claims require human approval",
+          "financial projections require human approval",
+          "fundraising language requires human approval",
+          "legal disclaimers require human approval",
+          "production campaign launch requires human approval"
+        ],
+        "escalateToL4": [
+          "factory cannot expose API keys in frontend code",
+          "factory cannot modify DNS or hosting settings",
+          "factory cannot connect production CRM without approval"
+        ]
+      },
+      "notes": "Landings are part of growth and investor acquisition infrastructure, not simple marketing pages. When landing includes AI voice agent, factory generates UI shell and mock adapter only — production realtime voice requires Claude Code review."
+    }
+  }
+}

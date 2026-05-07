@@ -334,6 +334,51 @@ Every Firestore feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every firestore-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `hook-service-pattern` | Defines the three-layer hook → client → Firestore architecture. All new hooks must follow this pattern and expose { data, loading, error }. |
+| `realtime-firestore-listener` | Core read primitive. Defines onSnapshot lifecycle, cleanup contract, null-as-loading sentinel, and dependency array discipline. |
+| `loading-empty-error-state` | Every hook must return loading state and every consuming screen must handle null/[]/error. |
+| `testing-guide` | Firestore hook tests use mockOnSnapshot + waitFor + act(unmount) cleanup verification. |
+
+## Optional Building Blocks
+
+Include when the feature plan declares the matching need:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `async-lookup-then-subscribe` | Hook requires a preliminary Firestore read (vendorID, dispatchID) before it can subscribe. Mandatory ref+cancelled pattern. |
+| `idempotent-event-processing` | Hook drives a mutation (write/update/delete) that could be called multiple times for the same event. |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L1` — factory + Claude Code review |
+| `riskLevelDefault` | `medium` |
+| `factoryCanAutoRetry` | `true` (TypeScript, mock setup failures) |
+| `requiresClaudeCodeReview` | yes — lifecycle correctness, cleanup, dep array |
+| `validationCommands` | `jest`, `tsc --noEmit` |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Hook requires async vendorID lookup before subscribe | L1 — include `async-lookup-then-subscribe` |
+| Hook touches multiple collections in one effect | L2 — Claude Code lifecycle review |
+| Hook requires Firestore index creation | L2 — Claude Code must create index |
+| Hook involves security rules assumptions | L2 — Claude Code security review |
+| Hook performs destructive data operations | L3 — human approval |
+| Factory cannot deploy Firestore security rules | L4 — prohibited |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

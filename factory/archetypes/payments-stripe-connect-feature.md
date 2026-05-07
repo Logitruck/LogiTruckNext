@@ -283,6 +283,57 @@ Every payments feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every payments-stripe-connect-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `callable-function-pattern` | All Stripe operations use onCall v2. Auth check is always first. HttpsError for all error paths. |
+| `callable-auth-pattern` | Mandatory because stripeconnect.js has an active v1 auth vulnerability (data.auth is undefined in v2). Factory always uses request.auth?.uid. |
+| `cloud-function-structure` | Stripe function files follow the same import block and index.js export pattern as all Cloud Functions. |
+| `idempotent-event-processing` | Stripe account creation, payment intents, and payout operations must be idempotent. Re-running the same operation cannot create duplicate Stripe resources. |
+| `testing-guide` | Tests mock Stripe client. Never use production Stripe keys. Factory tests payload builders, reducers, and webhook parsing shape only. |
+
+## Optional Building Blocks
+
+Include when the feature plan declares the matching need:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `stripe-payment-intent-lifecycle` | Feature involves Express account onboarding, payment links, or the webhook handler for account.updated. |
+| `event-driven-orchestration` | Feature uses Firestore triggers to propagate payment state changes across collections. |
+| `firestore-trigger-pattern` | Feature requires Firestore triggers to react to payment_events or stripe_accounts document changes. |
+| `notification-trigger-pattern` | Feature sends push notifications on payment state changes (payout sent, payout failed). |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L2` — Claude Code integration required |
+| `riskLevelDefault` | `critical` |
+| `factoryCanAutoRetry` | `true` for payload builders and UI screens only |
+| `requiresClaudeCodeReview` | mandatory — auth pattern, idempotency keys, webhook signature |
+| `validationCommands` | `jest`, `tsc --noEmit` (mock Stripe client only) |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Factory generates UI payment state screens | L1 — factory can generate in sandbox |
+| Factory generates payload builders and reducers | L1 — factory can generate in sandbox |
+| All Stripe function integration into production | L2 — Claude Code required |
+| Webhook handler registration in Stripe dashboard | L2 — Claude Code must configure |
+| Production payout logic | L3 — legal/human approval |
+| Compliance assumptions or onboarding requirements | L3 — human approval |
+| Transaction fee models or financial liability | L3 — human approval |
+| Factory cannot use production Stripe keys | L4 — prohibited |
+| Factory cannot execute live payouts | L4 — prohibited |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

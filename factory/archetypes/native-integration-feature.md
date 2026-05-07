@@ -172,6 +172,51 @@ Every native integration feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every native-integration-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `testing-guide` | Factory generates only JS mock adapters and type stubs. Test rules define what can and cannot be tested for native integrations. |
+
+## Optional Building Blocks
+
+Include when the specific native domain matches:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `voice-session-lifecycle` | Native integration involves microphone access, audio recording, or ElevenLabs/WebRTC voice. |
+| `route-rendering-pattern` | Native integration requires a new screen to be registered in the navigator (e.g., document scanner screen). |
+| `loading-empty-error-state` | Factory generates a mock JS service layer with loading/error states for the native integration. |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L2` — Claude Code integration required for ALL output |
+| `riskLevelDefault` | `critical` |
+| `factoryCanAutoRetry` | `true` for JS service draft generation only |
+| `requiresClaudeCodeReview` | mandatory — factory produces handoff package, not production-ready files |
+| `validationCommands` | `tsc --noEmit` on generated TypeScript stubs only |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Factory generates TypeScript service drafts and mock adapters | L1 — factory can generate in sandbox |
+| All native SDK installation | L2 — Claude Code required |
+| All Expo plugin configuration (app.json) | L2 — Claude Code required |
+| All platform permission changes (location, microphone, camera) | L3 — human approval required |
+| Production rollout of any native feature | L3 — human approval required |
+| Factory cannot install native dependencies in production repo | L4 — prohibited |
+| Factory cannot run expo prebuild against production | L4 — prohibited |
+| Factory cannot modify Podfile, Gradle, or Xcode project | L4 — prohibited |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

@@ -354,6 +354,52 @@ Every mobile screen feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every mobile-screen-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `screen-hook-separation` | Enforces three-layer architecture: screen → hook → client. Screens must never call Firestore directly. |
+| `hook-service-pattern` | Defines how hooks subscribe to Firestore, return loading/error state, and expose mutations. Canonical pattern for all role-specific screens. |
+| `loading-empty-error-state` | All operational screens must handle null (loading), [] (empty), and error states. Three-state render order required. |
+| `testing-guide` | Screen and hook testing uses renderHook + waitFor from @testing-library/react-native. |
+
+## Optional Building Blocks
+
+Include when the feature plan declares the matching need:
+
+| Building Block | When to Include |
+|----------------|----------------|
+| `realtime-firestore-listener` | Screen subscribes to a Firestore collection or document in real time. |
+| `async-lookup-then-subscribe` | Hook requires vendorID/dispatchID lookup before subscribing (dispatch/carrier role hooks). Must use ref+cancelled pattern. |
+| `route-rendering-pattern` | Screen involves React Navigation: new route registration, drawer menu item, or tab addition. |
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L1` — factory + Claude Code review |
+| `riskLevelDefault` | `medium` |
+| `factoryCanAutoRetry` | `true` (TypeScript, test failures) |
+| `requiresClaudeCodeReview` | yes — architecture consistency, lifecycle correctness |
+| `validationCommands` | `jest`, `tsc --noEmit` |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Screen requires realtime Firestore listener | L1 — include `realtime-firestore-listener` |
+| Screen requires async vendorID/dispatchID lookup | L1 — include `async-lookup-then-subscribe` |
+| Screen modifies navigation root or deep links | L2 — Claude Code required |
+| Screen touches auth/session orchestration | L2 — Claude Code required |
+| Screen requires native module or map integration | L2/L3 — use maps-tracking or native-integration archetype |
+| Screen exposes safety-critical operational UI | L3 — human approval |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:

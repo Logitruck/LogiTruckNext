@@ -294,6 +294,44 @@ Every utility feature should define:
 
 ---
 
+---
+
+## Default Building Blocks
+
+These building blocks are always loaded for every utility-feature plan:
+
+| Building Block | Why Required |
+|----------------|-------------|
+| `testing-guide` | Pure utility testing uses direct import + jest assertions, not renderHook. Required to generate correct test files. |
+
+## Optional Building Blocks
+
+No optional building blocks defined for this archetype. Utilities are self-contained.
+
+If a utility is used inside a Firestore hook, include the parent feature's building blocks at the feature level, not the utility level.
+
+## Execution Defaults
+
+| Property | Value |
+|----------|-------|
+| `executionLevelDefault` | `L0` — factory autonomous |
+| `riskLevelDefault` | `low` |
+| `factoryCanAutoRetry` | `true` |
+| `requiresClaudeCodeReview` | lightweight (naming and placement only) |
+| `validationCommands` | `jest`, `tsc --noEmit` |
+
+## Escalation Rules
+
+| Condition | Escalation |
+|-----------|-----------|
+| Utility affects payment calculations (Stripe, fees, commissions) | L3 — human approval |
+| Utility affects auth or security behavior | L2 — Claude Code integration |
+| Utility requires new npm dependency | L2 — Claude Code dependency review |
+| Utility impacts native runtime | L2 — Claude Code review |
+| Pure formatting, conversion, validation | L0 — factory autonomous |
+
+---
+
 # Future Extensions
 
 Potential future archetype expansions:
