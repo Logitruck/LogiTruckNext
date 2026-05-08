@@ -297,38 +297,40 @@ Always use:
 
 The non-prefixed versions (`.returnValue`, `.resolvedValue`) do not exist on jest.fn() and will throw `TypeError: jest.fn(...).returnValue is not a function`.
 
-## Mock modules that initialize Firebase Admin at import time
+## CRITICAL: require() order — no Babel hoisting in this project
 
-Some internal modules call Firebase Admin APIs (`getFirestore()`, `getAuth()`, etc.) at
-**module load time** — meaning the moment they are `require()`-d, not inside a function call.
-If the mock for `firebase-admin` is not in place before those modules load, the test suite
-crashes with `Firebase Admin not initialized`.
+This project uses `transform: {}` (no Babel). **Jest does NOT hoist `jest.mock()` calls.**
+Execution is strictly top-to-bottom.
 
-**Rule:** mock every `functions/core/` module (and any other internal that initializes Firebase
-at import time) BEFORE requiring the function under test.
+**Rule: zero `require()` calls before the last `jest.mock()` call.**
 
-`functions/core/user.js` calls `getFirestore()` at the top level. Always mock it:
+If `require('firebase-functions/v2/https')` appears before `jest.mock('firebase-functions/v2/https', ...)`,
+the real package loads, triggers the firebase-admin import chain, and the test suite crashes.
+
+**Correct structure — ALL mocks first, ALL requires after:**
 
 ```js
-jest.mock('../../../core/user', () => ({
-  getUserByEmailSafe: jest.fn(),
-}));
+// ── STEP 1: all jest.mock() calls (no require before this block) ──────────
+jest.mock('firebase-functions/v2/https', () => ({...}));
+
+const mockServerTimestamp = jest.fn(() => 'mock-server-timestamp');
+const mockDb = { collection: jest.fn()... };
+const mockAuth = { createUser: jest.fn()... };
+const mockFirestore = jest.fn(() => mockDb);
+mockFirestore.FieldValue = { serverTimestamp: mockServerTimestamp };
+jest.mock('firebase-admin', () => ({ firestore: mockFirestore, auth: jest.fn(() => mockAuth) }));
+
+jest.mock('uuid', () => ({ v4: jest.fn().mockReturnValue('test-vendor-id-123') }));
+jest.mock('../../../core/user', () => ({ getUserByEmailSafe: jest.fn() }));
+// ── STEP 2: all require() calls (only after all mocks are registered) ─────
+const { HttpsError } = require('firebase-functions/v2/https');
+const { createCarrier } = require('../createCarrier');
+const admin = require('firebase-admin');
+const { getUserByEmailSafe } = require('../../../core/user');
 ```
 
-Order of statements in a Cloud Function test file:
-
-1. `jest.mock('firebase-functions/v2/https', ...)` — inline HttpsError
-2. `jest.mock('firebase-admin', ...)` — firestoreFn with FieldValue
-3. `jest.mock('uuid', ...)` — deterministic ID
-4. `jest.mock('../../../core/user', ...)` — prevents getFirestore() at import time
-5. `const { HttpsError } = require('firebase-functions/v2/https');`
-6. `const createXxx = require('../createXxx').createXxx;`
-7. `const admin = require('firebase-admin');`
-8. `const { helperFn } = require('../../../core/user');`
-
-All `jest.mock()` calls are hoisted by Jest before any `require()`, so order within
-the mock declarations does not matter — but listing them before the requires makes
-intent explicit and avoids confusion.
+`functions/core/user.js` calls `getFirestore()` at the top level — if it loads before
+`jest.mock('firebase-admin')` is registered, the test crashes with `Firebase Admin not initialized`.
 
 ---
 
