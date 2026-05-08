@@ -245,34 +245,43 @@ Every Cloud Function test must mock:
 
 ## firebase-admin mock — FieldValue is a static property
 
-`admin.firestore.FieldValue.serverTimestamp()` is a **static property on the `firestore` function**, not on its return value.
-The mock must attach `FieldValue` directly to the `firestoreFn` object:
+`admin.firestore.FieldValue.serverTimestamp()` is a **static property on the `firestore` function**,
+not on its return value. Use module-level variables so the mocks are reachable in test bodies:
 
 ```js
-jest.mock('firebase-admin', () => {
-  const firestoreFn = jest.fn().mockReturnValue({
-    collection: jest.fn().mockReturnValue({
-      doc: jest.fn().mockReturnValue({
-        set: jest.fn().mockResolvedValue(undefined),
-        collection: jest.fn().mockReturnValue({
-          doc: jest.fn().mockReturnValue({
-            set: jest.fn().mockResolvedValue(undefined),
-          }),
+const mockServerTimestamp = jest.fn(() => 'mock-server-timestamp');
+
+const mockDb = {
+  collection: jest.fn().mockReturnValue({
+    doc: jest.fn().mockReturnValue({
+      set: jest.fn().mockResolvedValue(undefined),
+      collection: jest.fn().mockReturnValue({
+        doc: jest.fn().mockReturnValue({
+          set: jest.fn().mockResolvedValue(undefined),
         }),
       }),
     }),
-  });
-  firestoreFn.FieldValue = {
-    serverTimestamp: jest.fn().mockReturnValue('TIMESTAMP'),
-  };
-  return {
-    auth: jest.fn().mockReturnValue({
-      createUser: jest.fn().mockResolvedValue({ uid: 'mock-uid' }),
-    }),
-    firestore: firestoreFn,
-  };
-});
+  }),
+};
+
+const mockAuth = {
+  createUser: jest.fn().mockResolvedValue({ uid: 'mock-uid' }),
+};
+
+const mockFirestore = jest.fn(() => mockDb);
+mockFirestore.FieldValue = {
+  serverTimestamp: mockServerTimestamp,
+};
+
+jest.mock('firebase-admin', () => ({
+  firestore: mockFirestore,
+  auth: jest.fn(() => mockAuth),
+}));
 ```
+
+These variables are defined BEFORE `jest.mock()` in execution order (no Babel hoisting needed),
+so the factory closure captures the correct references. They are also accessible in `beforeEach`
+and test bodies for assertions like `expect(mockServerTimestamp).toHaveBeenCalled()`.
 
 WRONG (FieldValue inside return value — does NOT work):
 ```js
