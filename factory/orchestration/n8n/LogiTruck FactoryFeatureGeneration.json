@@ -1,0 +1,1291 @@
+{
+  "name": "LogiTruck Factory — Feature Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "factory/execute",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "88bc0af8-fab3-4ef2-95a4-4f05edcddae9",
+      "name": "Factory Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1008,
+        208
+      ],
+      "webhookId": "logitruck-factory-execute"
+    },
+    {
+      "parameters": {
+        "jsCode": "const incoming = $input.first().json;\n\nconst body =\n  incoming.body ||\n  incoming;\n\nconst plan =\n  body.implementationPlan ||\n  body.plan ||\n  {};\n\nconst rawName =\n  plan.featureName ||\n  body.featureName ||\n  'unnamed-feature';\n\nconst featureName = rawName\n  .toLowerCase()\n  .replace(/\\s+/g, '-')\n  .replace(/[^a-z0-9-]/g, '');\n\nconst tmpRoot = '/tmp';\nconst timestamp = Date.now();\nconst workDir = `${tmpRoot}/logitruck-${featureName}-${timestamp}`;\n\nreturn [\n  {\n    json: {\n      debugIncomingKeys: Object.keys(incoming),\n      debugBodyKeys: Object.keys(body),\n      debugPlanKeys: Object.keys(plan),\n\n      project: body.project || 'LogiTruck',\n      featureName,\n      featureArchetype: plan.featureArchetype || '',\n      repoUrl: body.repoUrl || '',\n      baseBranch: body.baseBranch || plan.branch || 'main',\n      workDir,\n      repoDir: `${workDir}/repo`,\n      handoffPath: `${workDir}/handoff`,\n      plan,\n      riskLevel: plan.architectureImpact?.riskLevel || 'low',\n      executionLevel: '',\n      model: '',\n      testsData: { tests: [] },\n      implData: { files: [] },\n      testsWritten: [],\n      filesWritten: [],\n      validationOutput: '',\n      validationPassed: false,\n      status: 'parsed',\n      errors: []\n    }\n  }\n];"
+      },
+      "id": "472ee2c7-486a-4c0b-b825-48cc739aca8c",
+      "name": "Parse Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nif (data.status === 'rejected') return [{ json: data }];\nconst plan = data.plan;\nconst required = ['featureName','featureArchetype','businessIntent','repoContext','architectureImpact','automationScope','files','testingStrategy','factoryExecutionPlan','acceptanceCriteria'];\nconst validArchetypes = ['utility-feature','mobile-screen-feature','firestore-feature','cloud-function-feature','maps-tracking-feature','native-integration-feature','payments-stripe-connect-feature','ai-support-agent-feature','voice-agent-elevenlabs-feature','landing-react-vite-feature'];\nconst errors = [];\nrequired.filter(f => !plan[f]).forEach(f => errors.push('Missing required field: ' + f));\nif (!validArchetypes.includes(plan.featureArchetype)) errors.push('Invalid featureArchetype: ' + plan.featureArchetype);\nif ((!plan.files || (!plan.files.create || !plan.files.create.length)) && (!plan.files || (!plan.files.modify || !plan.files.modify.length))) errors.push('files.create or files.modify must have at least one entry');\nif (!plan.testingStrategy || !plan.testingStrategy.commands || !plan.testingStrategy.commands.length) errors.push('testingStrategy.commands must not be empty');\nif (errors.length > 0) return [{ json: { ...data, status: 'rejected', errors } }];\nreturn [{ json: { ...data, status: 'validated' } }];"
+      },
+      "id": "9bafba71-35e0-40b8-a471-9db2be6e9fb2",
+      "name": "Validate Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -496,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-plan-valid",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "rejected",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "bf585dfc-69b9-458a-8570-349f0b5f7224",
+      "name": "IF Plan Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.status, featureName: $json.featureName, errors: $json.errors, summary: 'Plan rejected. Fix errors and retry.' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "2dd7823c-af9f-4757-a98c-9dbd249ebd06",
+      "name": "Reject Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst plan = data.plan;\nconst archetype = plan.featureArchetype;\nconst risk = (plan.architectureImpact && plan.architectureImpact.riskLevel) || 'low';\nconst nativeRisk = plan.architectureImpact && plan.architectureImpact.nativeRisk === true;\nconst levelMap = {\n  'utility-feature': 'L0',\n  'landing-react-vite-feature': 'L0',\n  'mobile-screen-feature': 'L1',\n  'ai-support-agent-feature': 'L1',\n  'firestore-feature': (risk === 'high' || risk === 'critical') ? 'L2' : 'L1',\n  'cloud-function-feature': risk === 'critical' ? 'L2' : 'L1',\n  'maps-tracking-feature': nativeRisk ? 'L2' : 'L1',\n  'native-integration-feature': 'L2',\n  'payments-stripe-connect-feature': 'L2',\n  'voice-agent-elevenlabs-feature': 'L2'\n};\nconst executionLevel = levelMap[archetype] || 'L2';\nconst model = executionLevel === 'L0' ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6';\nconst maxRetries = (plan.factoryExecutionPlan && plan.factoryExecutionPlan.maxRetries != null) ? plan.factoryExecutionPlan.maxRetries : 2;\nreturn [{ json: { ...data, executionLevel, riskLevel: risk, model, maxRetries, status: 'classified' } }];"
+      },
+      "id": "0b92e1fd-fa27-40a6-864d-4eaa90b2b1ea",
+      "name": "Classify Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "command": "set -e\nWORK_DIR=\"{{ $json.workDir }}\"\nif [[ \"$WORK_DIR\" != /tmp/* ]] && [[ \"$WORK_DIR\" != /private/tmp/* ]] && [[ \"$WORK_DIR\" != /var/folders/* ]]; then\n  echo \"ERROR: workDir safety check failed\" >&2\n  exit 1\nfi\nrm -rf \"$WORK_DIR\"\nmkdir -p \"$WORK_DIR/handoff/generated-files\"\nmkdir -p \"$WORK_DIR/handoff/tests\"\nmkdir -p \"$WORK_DIR/logs\"\necho \"sandbox_ready\""
+      },
+      "id": "83673e46-ee70-4f8e-b6d6-e12c4cb29ae7",
+      "name": "Setup Sandbox Cmd",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('Classify Risk').first().json;\nif (cmd.exitCode !== 0) {\n  return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Setup sandbox failed: ' + cmd.stderr] } }];\n}\nreturn [{ json: { ...data, status: 'sandbox_ready' } }];"
+      },
+      "id": "0b34b7ae-1590-4fa4-a3e8-743dfed105eb",
+      "name": "After Setup Sandbox",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "command": "=set -e\n\nWORK_DIR=\"{{$json.workDir}}\"\nREPO_DIR=\"{{$json.repoDir}}\"\nBRANCH=\"{{$json.plan.branch || 'main'}}\"\n\nrm -rf \"$WORK_DIR\"\nmkdir -p \"$WORK_DIR\"\n\ngit clone \\\n  --depth 1 \\\n  --branch \"$BRANCH\" \\\n  \"https://x-access-token:${GITHUB_TOKEN}@github.com/Logitruck/LogiTruckNext.git\" \\\n  \"$REPO_DIR\"\n\necho \"CLONE_OK\""
+      },
+      "id": "72be4d9e-cd7c-460c-bb82-3f8ab308d87f",
+      "name": "Clone Repository Cmd",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        752,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('After Setup Sandbox').first().json;\nif (cmd.exitCode !== 0) {\n  return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Clone failed: ' + cmd.stderr] } }];\n}\nreturn [{ json: { ...data, status: 'cloned' } }];"
+      },
+      "id": "c4b20800-0ce1-4f6d-a4a4-6627548c946a",
+      "name": "After Clone Repo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst data = $input.first().json;\nconst plan = data.plan;\nconst repoDir = data.repoDir;\n\nfunction safeRead(relativePath) {\n  const fullPath = path.join(repoDir, relativePath);\n  try {\n    if (!fs.existsSync(fullPath)) return `FILE_NOT_FOUND: ${relativePath}`;\n    return fs.readFileSync(fullPath, 'utf8');\n  } catch (e) {\n    return `ERROR_READING_FILE: ${relativePath}\\n${e.message}`;\n  }\n}\n\nfunction readJson(relativePath) {\n  try {\n    return JSON.parse(safeRead(relativePath));\n  } catch {\n    return {};\n  }\n}\n\nfunction normalizeBlockName(block) {\n  if (!block) return null;\n  if (typeof block === 'string') return block.replace(/\\.md$/, '');\n\n  const raw = block.name || block.file || block.path;\n  if (!raw) return null;\n\n  return String(raw).split('/').pop().replace(/\\.md$/, '');\n}\n\nconst registry = readJson('factory/registry/archetype-registry.json');\n\nconst archetypeConfig =\n  registry[plan.featureArchetype] ||\n  registry.archetypes?.[plan.featureArchetype] ||\n  {};\n\nconst defaultBlocks =\n  archetypeConfig.defaultBuildingBlocks || [];\n\nconst selectedBlocks =\n  plan.selectedBuildingBlocks || [];\n\nconst resolvedBuildingBlocks = [\n  ...new Set([\n    ...defaultBlocks.map(normalizeBlockName),\n    ...selectedBlocks.map(normalizeBlockName)\n  ].filter(Boolean))\n];\n\nconst buildingBlockContents = resolvedBuildingBlocks.map(blockName => {\n  const relativePath = `factory/building-blocks/${blockName}.md`;\n\n  return [\n    `# BUILDING BLOCK: ${blockName}`,\n    `# SOURCE: ${relativePath}`,\n    safeRead(relativePath)\n  ].join('\\n\\n');\n});\n\nconst archetypePath = `factory/archetypes/${plan.featureArchetype}.md`;\n\nconst contextBundle = [\n  `# IMPLEMENTATION PLAN\\n${JSON.stringify(plan, null, 2)}`,\n\n  `# RESOLVED BUILDING BLOCKS\\n${resolvedBuildingBlocks.join('\\n')}`,\n\n  `# FACTORY CLAUDE RULES\\n${safeRead('factory/CLAUDE.md')}`,\n\n  `# FACTORY ARCHITECTURE\\n${safeRead('factory/ARCHITECTURE.md')}`,\n\n  `# ARCHETYPE\\n# SOURCE: ${archetypePath}\\n${safeRead(archetypePath)}`,\n\n  `# ARCHETYPE REGISTRY\\n${JSON.stringify(archetypeConfig, null, 2)}`,\n\n  `# EXECUTION REGISTRY\\n${safeRead('factory/registry/execution-registry.md')}`,\n\n  `# BUILDING BLOCK RESOLUTION\\n${safeRead('factory/registry/BUILDING_BLOCK_RESOLUTION.md')}`,\n\n  `# GRAPHIFY REPORT\\n${safeRead('graphify-out/GRAPH_REPORT.md')}`,\n\n  `# FIRESTORE DATA MODEL REGISTRY\\n${safeRead('factory/registry/data-model-registry.json')}`,\n\n`# PROJECT STRUCTURE REGISTRY\\n${safeRead('factory/registry/project-structure-registry.json')}`,\n\n  ...buildingBlockContents\n].join('\\n\\n---\\n\\n');\n\nreturn [{\n  json: {\n    ...data,\n    plan: {\n      ...plan,\n      resolvedBuildingBlocks\n    },\n    contextBundle,\n    loadedBuildingBlocks: resolvedBuildingBlocks,\n    status: 'context_loaded'\n  }\n}];"
+      },
+      "id": "932d7676-5865-454c-88be-e203cd2c4bb2",
+      "name": "Load Context Bundle",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1264,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst plan = data.plan;\n\nconst acceptanceCriteria = (plan.acceptanceCriteria || [])\n  .map(c => '- ' + c)\n  .join('\\n');\n\nconst patterns = (plan.repoContext?.existingPatternsToFollow || [])\n  .join('\\n');\n\nconst filesToCreate = JSON.stringify(plan.files?.create || [], null, 2);\nconst testingStrategy = JSON.stringify(plan.testingStrategy || {}, null, 2);\nconst contextBundle = data.contextBundle || '';\n\nconst llmPrompt =\n`You are the LogiTruck Factory test generator.\n\nReturn ONLY valid JSON.\nDo not use markdown.\nDo not use code fences.\nDo not explain anything.\nDo not wrap the response in \"output\".\nReturn the root object directly.\nValid root keys:\n- tests\n\nGenerate Jest tests for this feature.\n\nIMPLEMENTATION PLAN:\n${JSON.stringify(plan, null, 2)}\n\nFILES TO CREATE:\n${filesToCreate}\n\nTESTING STRATEGY:\n${testingStrategy}\n\nACCEPTANCE CRITERIA:\n${acceptanceCriteria}\n\nEXISTING PATTERNS:\n${patterns}\n\nLOGITRUCK FACTORY CONTEXT:\n${contextBundle}\n\nTEST SCOPE:\n1. unauthenticated user throws HttpsError unauthenticated\n2. missing vendorID throws HttpsError invalid-argument\n3. returns active trucks for vendorID\n4. maps Firestore docs correctly\n5. Firestore errors throw internal error\n\nCRITICAL SIZE LIMIT:\n- Generate only ONE test file.\n- Generate maximum 5 test cases.\n- Keep the decoded test file under 150 lines.\n- Do not test every edge case.\n- Focus only on acceptance criteria.\n- Do not include long boilerplate.\n- Use concise mocks.\n\nRULES:\n- Pure utilities: import directly, no renderHook, no React Testing Library.\n- React hooks: use renderHook from @testing-library/react-native.\n- Tests must FAIL before implementation exists and PASS after implementation.\n- No real Firebase/Stripe/OpenAI/ElevenLabs calls — use jest.mock().\n- Test edge cases and error paths.\n- Use describe/it blocks with clear readable names.\n- Encode the full test file content as base64.\n- Do not return raw file content.\n- The decoded content must be valid TypeScript/Jest code.\n\nOutput exactly this JSON shape:\n{\n  \"tests\": [\n    {\n      \"filePath\": \"src/utils/__tests__/example.test.ts\",\n      \"contentBase64\": \"base64 encoded full test file content\"\n    }\n  ]\n}`;\n\nreturn [\n  {\n    json: {\n      ...data,\n      llmPrompt,\n      status: 'test_prompt_built'\n    }\n  }\n];"
+      },
+      "id": "28fdecc1-0cbe-41b1-ae6b-3c4c7350115a",
+      "name": "Build Tests Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiRequestBody }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "ffa1c39f-1582-49eb-bba9-bb9ffd76412f",
+      "name": "Generate Tests API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1792,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Load Context Bundle').first().json;\n\ntry {\n\n  const source =\n    response.output ||\n    response;\n\n  let tests = {\n    tests: source.tests || []\n  };\n\n  tests.tests = tests.tests.map(test => ({\n    ...test,\n    content:\n      test.content ||\n      Buffer.from(\n        test.contentBase64 || '',\n        'base64'\n      ).toString('utf8')\n  }));\n\n  return [\n    {\n      json: {\n        ...data,\n        testsData: tests,\n        status: 'tests_generated'\n      }\n    }\n  ];\n\n} catch (e) {\n\n  return [\n    {\n      json: {\n        ...data,\n        status: 'error',\n        errors: [\n          ...(data.errors || []),\n          'Failed to parse tests response: ' + e.message\n        ],\n        rawLLMOutput: response\n      }\n    }\n  ];\n}"
+      },
+      "id": "d0fae59e-8cb3-4e0a-b958-4c5bfe72ac2d",
+      "name": "Parse Tests Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\n\nconst data = $input.first().json;\nconst tests = data.testsData?.tests || [];\n\nconst repoDir = path.resolve(data.repoDir);\nconst written = [];\n\nfor (const test of tests) {\n  if (!test.filePath || !test.content) continue;\n\n  const resolved = path.resolve(repoDir, test.filePath);\n\n  if (!resolved.startsWith(repoDir + path.sep)) {\n    return [{\n      json: {\n        ...data,\n        status: 'error',\n        errors: [\n          ...data.errors,\n          `Path traversal blocked: ${test.filePath}`\n        ]\n      }\n    }];\n  }\n\n  fs.mkdirSync(path.dirname(resolved), { recursive: true });\n  fs.writeFileSync(resolved, test.content, 'utf8');\n\n  written.push(test.filePath);\n}\n\nreturn [{\n  json: {\n    ...data,\n    testsWritten: written,\n    status: 'tests_written'\n  }\n}];"
+      },
+      "id": "9f05263c-3ffa-4851-9440-22e639200df2",
+      "name": "Write Tests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2256,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst plan = data.plan;\n\nconst filesToCreate = JSON.stringify(plan.files?.create || [], null, 2);\nconst filesToModify = JSON.stringify(plan.files?.modify || [], null, 2);\nconst doNotTouch = JSON.stringify(plan.files?.doNotTouch || [], null, 2);\n\nconst patterns = (plan.repoContext?.existingPatternsToFollow || []).join('\\n');\nconst antiPatterns = (plan.repoContext?.knownAntiPatternsToAvoid || []).join('\\n');\n\nconst tests = JSON.stringify(data.testsData || { tests: [] }, null, 2);\nconst contextBundle = data.contextBundle || '';\n\nconst llmPrompt =\n`You are the LogiTruck Factory implementation generator.\n\nReturn ONLY valid JSON.\nDo not use markdown.\nDo not use code fences.\nDo not explain anything.\n\nGenerate implementation files for this feature.\n\nLOGITRUCK FACTORY CONTEXT:\n${contextBundle}\n\nIMPLEMENTATION PLAN:\n${JSON.stringify(plan, null, 2)}\n\nGENERATED TESTS — make these pass:\n${tests}\n\nFILES TO CREATE:\n${filesToCreate}\n\nFILES TO MODIFY:\n${filesToModify}\n\nDO NOT TOUCH:\n${doNotTouch}\n\nEXISTING PATTERNS TO FOLLOW:\n${patterns || 'none specified'}\n\nANTI-PATTERNS TO AVOID:\n${antiPatterns || 'none specified'}\n\nRULES:\n- Follow LogiTruck architecture patterns from the context bundle.\n- Follow the selected archetype.\n- Follow the selected building blocks.\n- Reuse existing patterns from repoContext.\n- Avoid known anti-patterns from repoContext.\n- Avoid new dependencies unless the plan explicitly allows them.\n- Use explicit TypeScript input and return types.\n- Do not use \"any\" types.\n- No hidden Firebase/network/native calls in utilities.\n- This is a sandbox integration candidate only.\n- Generate only files requested in FILES TO CREATE or FILES TO MODIFY.\n- Do not modify protected files.\n- Generated tests must pass.\n\nOutput exactly this JSON shape:\n{\n  \"files\": [\n    {\n      \"filePath\": \"src/utils/example.ts\",\n      \"content\": \"full implementation file content\"\n    }\n  ]\n}`;\n\nreturn [\n  {\n    json: {\n      ...data,\n      llmPrompt,\n      status: 'implementation_prompt_built'\n    }\n  }\n];"
+      },
+      "id": "01bb7a68-7a19-48e8-876b-208cc072eb4b",
+      "name": "Build Implementation Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2512,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiRequestBody }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "6d47417c-8579-451e-a038-83d9ee123b09",
+      "name": "Generate Implementation API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        2720,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Write Tests').first().json;\n\nconst source = response.output || response;\n\nlet impl = {\n  files: source.files || []\n};\n\nimpl.files = impl.files.map(file => ({\n  ...file,\n  content: file.content || Buffer.from(file.contentBase64 || '', 'base64').toString('utf8')\n}));\n\nreturn [{\n  json: {\n    ...data,\n    implData: impl,\n    status: 'implementation_generated'\n  }\n}];"
+      },
+      "id": "3397f8f8-00db-4869-bb61-237397b0c0a0",
+      "name": "Parse Implementation Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst data = $input.first().json;\nconst files = (data.implData && data.implData.files) || [];\nconst doNotTouch = (data.plan.files && data.plan.files.doNotTouch) || [];\nconst repoDir = path.resolve(data.repoDir);\nconst written = [];\nfor (const file of files) {\n  if (!file.filePath || !file.content) continue;\n  if (doNotTouch.some(function(p) { return file.filePath.includes(p); })) {\n    return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Attempted to write protected file: ' + file.filePath] } }];\n  }\n  const resolved = path.resolve(repoDir, file.filePath);\n  if (!resolved.startsWith(repoDir + path.sep) && resolved !== repoDir) {\n    return [{ json: { ...data, status: 'error', errors: [...data.errors, 'Path traversal blocked: ' + file.filePath] } }];\n  }\n  fs.mkdirSync(path.dirname(resolved), { recursive: true });\n  fs.writeFileSync(resolved, file.content, 'utf8');\n  written.push(file.filePath);\n}\nreturn [{ json: { ...data, filesWritten: written, status: 'files_written' } }];"
+      },
+      "id": "b51ad167-c5ef-488a-b4f6-f92d8290d2a4",
+      "name": "Write Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3264,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "command": "REPO_DIR=\"{{$json.repoDir}}\"\n\nARCHETYPE=\"{{$json.featureArchetype}}\"\n\nTEST_FILE=\"{{$json.testsWritten[0]}}\"\n\necho \"REPO_DIR=$REPO_DIR\"\necho \"ARCHETYPE=$ARCHETYPE\"\necho \"TEST_FILE=$TEST_FILE\"\n\ncd \"$REPO_DIR\"\n\necho \"=== INSTALL ===\"\nNODE_ENV=development npm install --include=dev --legacy-peer-deps 2>&1 | tail -20\n\nVALIDATION_EXIT_CODE=0\n\necho \"=== TSC ===\"\n./node_modules/.bin/tsc --noEmit 2>&1 || VALIDATION_EXIT_CODE=$?\n\necho \"=== JEST GENERATED TEST ONLY ===\"\nif [ \"$ARCHETYPE\" = \"landing-react-vite-feature\" ]; then\n  npm run build 2>&1 || VALIDATION_EXIT_CODE=$?\nelse\n  ./node_modules/.bin/jest \"$TEST_FILE\" --watchAll=false --forceExit 2>&1 || VALIDATION_EXIT_CODE=$?\nfi\n\necho \"FACTORY_EXIT_CODE=$VALIDATION_EXIT_CODE\"\n\necho \"=== FIN ===\"\n\nexit 0"
+      },
+      "id": "ebc22706-5b08-4e19-9d98-cfca4978a08b",
+      "name": "Run Validation Cmd",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3504,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('Write Files').first().json;\n\nconst output = `STDOUT:\\n${cmd.stdout || ''}\\n\\nSTDERR:\\n${cmd.stderr || ''}`;\n\nconst match = output.match(/FACTORY_EXIT_CODE=(\\d+)/);\nconst factoryExitCode = match ? Number(match[1]) : 1;\n\nconst passed = factoryExitCode === 0;\n\nreturn [\n  {\n    json: {\n      ...data,\n      validationOutput: output,\n      validationExitCode: factoryExitCode,\n      validationPassed: passed,\n      status: passed ? 'validation_passed' : 'validation_failed'\n    }\n  }\n];"
+      },
+      "id": "38de44e6-1321-4c1f-a190-295874a1e80d",
+      "name": "Parse Validation Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3760,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-validation-passed",
+              "leftValue": "={{ $json.validationPassed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "89d355d1-3e91-4d46-b184-e7ded39b5748",
+      "name": "IF Validation Passed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        4000,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst filesWritten = JSON.stringify(\n  data.filesWritten || [],\n  null,\n  2\n);\n\nconst testsWritten = JSON.stringify(\n  data.testsWritten || [],\n  null,\n  2\n);\n\nconst contextBundle = data.contextBundle || '';\n\nconst llmPrompt =\n`You are the LogiTruck Factory failure analyzer.\n\nReturn ONLY valid JSON.\nDo not use markdown.\nDo not use code fences.\nDo not explain anything.\n\nAnalyze this validation failure and classify it.\n\nLOGITRUCK FACTORY CONTEXT:\n${contextBundle}\n\nVALIDATION OUTPUT:\n${data.validationOutput || ''}\n\nFILES WRITTEN:\n${filesWritten}\n\nTESTS WRITTEN:\n${testsWritten}\n\nRETRY COUNT:\n${data.retryCount} / ${data.maxRetries}\n\nSAFE TO RETRY:\n- TypeScript errors\n- Missing imports\n- Failing isolated tests\n- Wrong file paths\n- Mock setup errors\n- Formatting issues\n- Simple logic mismatches\n- Invalid exports\n- Jest expectation mismatches\n- Firebase mock mismatches\n- Async test timing issues\n\nMUST ESCALATE:\n- Native build failure\n- Dependency conflict\n- Expo plugin issue\n- Stripe/payment production errors\n- Firestore security rules violations\n- AI runtime orchestration errors\n- Unknown runtime errors\n- Architectural violations\n- Dangerous filesystem writes\n\nRULES:\n- Respect LogiTruck architecture patterns.\n- Respect archetype restrictions.\n- Respect building block constraints.\n- Prefer retry for isolated implementation mistakes.\n- Escalate only when the issue is structural or unsafe.\n- Be concise and deterministic.\n\nOutput exactly this JSON shape:\n{\n  \"retryAllowed\": true,\n  \"failureType\": \"typescript | missing-import | failing-test | path-error | mock-error | formatting | native-build | dependency-conflict | architectural-violation | unknown\",\n  \"rootCause\": \"short root cause\",\n  \"patchInstructions\": \"concise patch instructions\"\n}`;\n\nreturn [\n  {\n    json: {\n      ...data,\n      llmPrompt,\n      status: 'failure_analysis_prompt_built'\n    }\n  }\n];"
+      },
+      "id": "dad6f76d-0fa2-4f19-8599-de9897215228",
+      "name": "Build Failure Analysis Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4256,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiRequestBody }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "f53ed0ae-7998-4179-9342-8da694ef03b7",
+      "name": "Analyze Failure API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        4480,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Parse Validation Result').first().json;\n\nlet analysis = {\n  retryAllowed: false,\n  failureType: 'unknown',\n  rootCause: 'Could not parse analysis',\n  patchInstructions: ''\n};\n\ntry {\n\n  const raw =\n    response.text ||\n    response.output ||\n    response.response ||\n    '{}';\n\n  const cleaned = raw\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/\\s*```$/i, '')\n    .trim();\n\n  analysis = JSON.parse(cleaned);\n\n} catch (e) {\n\n  analysis.rootCause =\n    'Parse error: ' + e.message;\n\n  analysis.rawLLMOutput = response;\n}\n\nconst retryAllowed =\n  analysis.retryAllowed === true &&\n  data.retryCount < data.maxRetries;\n\nreturn [\n  {\n    json: {\n      ...data,\n      failureAnalysis: analysis,\n      retryAllowed,\n      status: 'failure_analyzed'\n    }\n  }\n];"
+      },
+      "id": "200677f7-53d4-47b0-a10e-fbd73d68c3fc",
+      "name": "Parse Failure Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4784,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "cond-retry-allowed",
+              "leftValue": "={{ $json.retryAllowed }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "7d53762a-6d6e-43b5-b40f-3cea7f8cf3f7",
+      "name": "IF Retry Allowed",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        5008,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst llmPrompt =\n`You are the LogiTruck Factory patch generator.\n\nReturn ONLY valid JSON.\nDo not use markdown.\nDo not use code fences.\nDo not explain anything.\n\nGenerate patches to fix these validation errors.\n\nVALIDATION OUTPUT:\n${data.validationOutput || ''}\n\nFAILURE ANALYSIS:\n${JSON.stringify(data.failureAnalysis || {}, null, 2)}\n\nIMPLEMENTATION PLAN:\n${JSON.stringify(data.plan || {}, null, 2)}\n\nFILES WRITTEN:\n${JSON.stringify(data.filesWritten || [], null, 2)}\n\nTESTS WRITTEN:\n${JSON.stringify(data.testsWritten || [], null, 2)}\n\nDO NOT TOUCH:\n${JSON.stringify(data.plan?.files?.doNotTouch || [], null, 2)}\n\nRULES:\n- Only fix what is broken.\n- Do not introduce new dependencies.\n- Return COMPLETE file contents for each patched file.\n- Do not return diffs.\n- Match the original implementation intent.\n- Only patch files that already exist in filesWritten/testsWritten unless absolutely required.\n\nOutput exactly this JSON shape:\n{\n  \"patches\": [\n    {\n      \"filePath\": \"src/utils/example.ts\",\n      \"content\": \"full patched file content\"\n    }\n  ],\n  \"reason\": \"short explanation of what was fixed\"\n}`;\n\nreturn [\n  {\n    json: {\n      ...data,\n      llmPrompt\n    }\n  }\n];"
+      },
+      "id": "1ac6fab6-715f-46ad-88a2-8fc6d07fdacc",
+      "name": "Build Patch Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5232,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.apiRequestBody }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "15425941-f95b-4157-834c-1fa172c71cb6",
+      "name": "Generate Patch API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        5408,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst data = $('Parse Failure Analysis').first().json;\n\nlet patch = {\n  patches: [],\n  reason: 'No patches generated'\n};\n\ntry {\n\n  const raw =\n    response.text ||\n    response.output ||\n    response.response ||\n    '{}';\n\n  const cleaned = raw\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/\\s*```$/i, '')\n    .trim();\n\n  patch = JSON.parse(cleaned);\n\n  if (!Array.isArray(patch.patches)) {\n    patch = {\n      patches: [],\n      reason: 'Invalid patch format'\n    };\n  }\n\n} catch (e) {\n\n  patch = {\n    patches: [],\n    reason: 'Parse error: ' + e.message,\n    rawLLMOutput: response\n  };\n}\n\nreturn [\n  {\n    json: {\n      ...data,\n      patchData: patch,\n      status: 'patch_generated'\n    }\n  }\n];"
+      },
+      "id": "73669fe1-6533-48f3-a0e6-d5ec055b27a1",
+      "name": "Parse Patch Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5712,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst path = require('path');\nconst data = $input.first().json;\nconst patches = (data.patchData && data.patchData.patches) || [];\nconst doNotTouch = (data.plan.files && data.plan.files.doNotTouch) || [];\nconst repoDir = path.resolve(data.repoDir);\nconst patchedFiles = [];\nfor (const patch of patches) {\n  if (!patch.filePath || !patch.content) continue;\n  if (doNotTouch.some(function(p) { return patch.filePath.includes(p); })) continue;\n  const resolved = path.resolve(repoDir, patch.filePath);\n  if (!resolved.startsWith(repoDir + path.sep) && resolved !== repoDir) continue;\n  fs.mkdirSync(path.dirname(resolved), { recursive: true });\n  fs.writeFileSync(resolved, patch.content, 'utf8');\n  patchedFiles.push(patch.filePath);\n}\nconst retryEntry = {\n  attempt: data.retryCount + 1,\n  failureType: data.failureAnalysis && data.failureAnalysis.failureType,\n  rootCause: data.failureAnalysis && data.failureAnalysis.rootCause,\n  patchedFiles,\n  reason: data.patchData && data.patchData.reason\n};\nreturn [{ json: { ...data, retryCount: data.retryCount + 1, retryHistory: [...data.retryHistory, retryEntry], status: 'patch_applied' } }];"
+      },
+      "id": "81b863e2-c4cc-4f0a-bbc4-75b5a7056a5b",
+      "name": "Apply Patch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5984,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "command": "REPO_DIR=\"{{$json.repoDir}}\"\n\nARCHETYPE=\"{{$json.featureArchetype}}\"\n\necho \"REPO_DIR=$REPO_DIR\"\necho \"ARCHETYPE=$ARCHETYPE\"\n\ncd \"$REPO_DIR\"\n\nVALIDATION_EXIT_CODE=0\n\nif [ \"$ARCHETYPE\" = \"landing-react-vite-feature\" ]; then\n  npm run build 2>&1 || VALIDATION_EXIT_CODE=$?\nelse\n  ./node_modules/.bin/tsc --noEmit 2>&1 || VALIDATION_EXIT_CODE=$?\n  ./node_modules/.bin/jest --watchAll=false --forceExit --passWithNoTests 2>&1 || VALIDATION_EXIT_CODE=$?\nfi\n\necho \"FACTORY_EXIT_CODE=$VALIDATION_EXIT_CODE\"\n\nexit 0"
+      },
+      "id": "8abe304c-9e6b-43dd-8eed-1276acce6014",
+      "name": "Run Validation Retry Cmd",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        6240,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cmd = $input.first().json;\nconst data = $('Apply Patch').first().json;\n\nconst output =\n  'VALIDATION RETRY ATTEMPT ' + data.retryCount +\n  '\\n\\nSTDOUT:\\n' + (cmd.stdout || '') +\n  '\\n\\nSTDERR:\\n' + (cmd.stderr || '');\n\nconst match = output.match(/FACTORY_EXIT_CODE=(\\d+)/);\nconst factoryExitCode = match ? Number(match[1]) : 1;\n\nconst passed = factoryExitCode === 0;\n\nreturn [\n  {\n    json: {\n      ...data,\n      validationOutput: output,\n      validationExitCode: factoryExitCode,\n      validationPassed: passed,\n      status: passed ? 'retry_passed' : 'retry_failed'\n    }\n  }\n];"
+      },
+      "id": "75bdb4fb-5155-4f5d-9eae-fd2050728337",
+      "name": "Parse Retry Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6480,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fs = require('fs');\nconst data = $input.first().json;\nconst h = data.handoffPath;\nfs.mkdirSync(h + '/generated-files', { recursive: true });\nfs.mkdirSync(h + '/tests', { recursive: true });\n\nfs.writeFileSync(h + '/IMPLEMENTATION_PLAN.json', JSON.stringify(data.plan, null, 2), 'utf8');\nfs.writeFileSync(h + '/validation-output.txt', data.validationOutput || 'No validation output.', 'utf8');\n\nconst retrySummary = data.retryHistory && data.retryHistory.length\n  ? '# Retry Summary\\n\\nTotal Retries: ' + data.retryCount + '\\n\\n' + data.retryHistory.map(function(r, i) {\n      return '## Attempt ' + (i+1) + '\\n- Failure Type: ' + r.failureType + '\\n- Root Cause: ' + r.rootCause + '\\n- Patched: ' + ((r.patchedFiles || []).join(', ') || 'none') + '\\n- Reason: ' + r.reason;\n    }).join('\\n\\n')\n  : '# Retry Summary\\n\\nNo retries performed.';\nfs.writeFileSync(h + '/retry-summary.md', retrySummary, 'utf8');\n\nconst riskNotes = '# Risk Notes\\n\\n- Feature: ' + data.featureName + '\\n- Archetype: ' + data.featureArchetype + '\\n- Execution Level: ' + data.executionLevel + '\\n- Risk Level: ' + data.riskLevel + '\\n- Validation Passed: ' + data.validationPassed + '\\n- Retries: ' + data.retryCount + ' / ' + data.maxRetries + '\\n\\n## Errors\\n' + (data.errors && data.errors.length ? data.errors.map(function(e) { return '- ' + e; }).join('\\n') : 'None');\nfs.writeFileSync(h + '/risk-notes.md', riskNotes, 'utf8');\n\nconst plan = data.plan;\nconst steps = (plan.claudeCodeIntegrationPlan && plan.claudeCodeIntegrationPlan.steps) || (plan.claudeCodeHandoff && plan.claudeCodeHandoff.tasks) || ['1. Review generated files', '2. Apply to production repo', '3. Run full test suite', '4. Validate runtime behavior', '5. Commit if all checks pass'];\nconst claudeSteps = '# Claude Code Integration Steps\\n\\n' + steps.map(function(s,i) { return (i+1) + '. ' + s; }).join('\\n') + '\\n\\n## Files Generated (sandbox only)\\n' + ((data.filesWritten || []).map(function(f) { return '- ' + f; }).join('\\n') || 'None') + '\\n\\n## Tests Generated (sandbox only)\\n' + ((data.testsWritten || []).map(function(f) { return '- ' + f; }).join('\\n') || 'None') + '\\n\\n## Validation: ' + (data.validationPassed ? 'PASSED' : 'FAILED') + '\\n\\n> IMPORTANT: Factory output is a sandbox candidate only. Claude Code owns integration and production commit.';\nfs.writeFileSync(h + '/claude-integration-steps.md', claudeSteps, 'utf8');\n\nconst rollbackSteps = (plan.rollbackPlan && plan.rollbackPlan.steps && plan.rollbackPlan.steps.length)\n  ? plan.rollbackPlan.steps.map(function(s,i) { return (i+1) + '. ' + s; }).join('\\n')\n  : '1. Delete sandbox directory — no production changes were made.\\n   Path: ' + data.workDir;\nfs.writeFileSync(h + '/rollback-plan.md', '# Rollback Plan\\n\\n' + rollbackSteps, 'utf8');\n\nlet finalStatus = 'ready';\nif (!data.validationPassed && data.retryCount > 0) finalStatus = 'needs_fix';\nif (!data.validationPassed && data.retryAllowed === false) finalStatus = 'escalated';\nif (data.status === 'failure_analyzed' && !data.retryAllowed) finalStatus = 'escalated';\n\nconst manifest = {\n  featureName: data.featureName,\n  featureArchetype: data.featureArchetype,\n  executionLevel: data.executionLevel,\n  riskLevel: data.riskLevel,\n  status: finalStatus,\n  filesWritten: data.filesWritten || [],\n  testsWritten: data.testsWritten || [],\n  validationPassed: data.validationPassed || false,\n  retryCount: data.retryCount,\n  handoffPath: h,\n  timestamp: new Date().toISOString()\n};\nfs.writeFileSync(h + '/manifest.json', JSON.stringify(manifest, null, 2), 'utf8');\nreturn [{ json: { ...data, finalStatus, manifest, status: 'handoff_packaged' } }];"
+      },
+      "id": "639d5fea-bb13-4811-abb8-87e0eb880109",
+      "name": "Package Handoff",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6672,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $json.finalStatus, featureName: $json.featureName, featureArchetype: $json.featureArchetype, executionLevel: $json.executionLevel, workDir: $json.workDir, repoDir: $json.repoDir, handoffPath: $json.handoffPath, filesGenerated: $json.filesWritten, testsGenerated: $json.testsWritten, validationPassed: $json.validationPassed, retryCount: $json.retryCount, errors: $json.errors, summary: 'Factory run complete. Status: ' + $json.finalStatus + '. Validation: ' + ($json.validationPassed ? 'PASSED' : 'FAILED') + '. Files: ' + ($json.filesWritten || []).length + '. Tests: ' + ($json.testsWritten || []).length + '.' }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "f24e9395-7d5a-43b5-91de-9c41c15afb01",
+      "name": "Return Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        7008,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.llmPrompt }}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1648,
+        0
+      ],
+      "id": "fd0bca31-e45b-49e8-8f25-d11cf10cedc8",
+      "name": "Geenrate Test Api"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {
+          "maxTokensToSample": 10000,
+          "thinking": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        1648,
+        176
+      ],
+      "id": "13aed8c1-6406-47e0-ab02-a7fa5a7b6689",
+      "name": "haiku test generator",
+      "credentials": {
+        "anthropicApi": {
+          "id": "KXjUdRX1LPBUguVj",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.llmPrompt }}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        2688,
+        0
+      ],
+      "id": "a3fbb1c4-f947-4937-9b62-e078ee95dd92",
+      "name": "Generate Implementation API1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {
+          "maxTokensToSample": 10000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        2688,
+        208
+      ],
+      "id": "46dc9ba3-ca46-447a-9a27-4c832fa71483",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "KXjUdRX1LPBUguVj",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.llmPrompt }}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        4464,
+        208
+      ],
+      "id": "92929939-bacd-4f4b-8168-6a0168467b86",
+      "name": "Analyze Failure API1",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        4464,
+        416
+      ],
+      "id": "da4f61a1-4a06-4bae-9af3-a084e634186d",
+      "name": "Anthropic Chat Model1",
+      "credentials": {
+        "anthropicApi": {
+          "id": "KXjUdRX1LPBUguVj",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.llmPrompt }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        5392,
+        80
+      ],
+      "id": "a211752c-fc6f-4bb4-94d0-6020f2ab7258",
+      "name": "Generate Patch API1"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-haiku-4-5-20251001",
+          "mode": "list",
+          "cachedResultName": "Claude Haiku 4.5"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        5424,
+        496
+      ],
+      "id": "92a2c0c7-9343-43a6-a693-67afe37e604c",
+      "name": "Anthropic Chat Model2",
+      "credentials": {
+        "anthropicApi": {
+          "id": "KXjUdRX1LPBUguVj",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"output\": {\n    \"files\": [\n      {\n        \"filePath\": \"functions/src/vendor/getVendorTrucks.ts\",\n        \"contentBase64\": \"BASE64_ENCODED_IMPLEMENTATION_FILE_CONTENT\"\n      }\n    ]\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        2832,
+        208
+      ],
+      "id": "3c8972ce-43f1-4044-b935-d739c8e95925",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"tests\": [\n    {\n      \"filePath\": \"functions/src/vendor/__tests__/getVendorTrucks.test.ts\",\n      \"contentBase64\": \"BASE64_ENCODED_TEST_FILE_CONTENT\"\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1792,
+        208
+      ],
+      "id": "a3766e9a-e630-40dc-aaca-974237b74f19",
+      "name": "Structured Output Parser1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Factory Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Request": {
+      "main": [
+        [
+          {
+            "node": "Validate Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Plan": {
+      "main": [
+        [
+          {
+            "node": "IF Plan Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Plan Valid": {
+      "main": [
+        [
+          {
+            "node": "Classify Risk",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Risk": {
+      "main": [
+        [
+          {
+            "node": "Setup Sandbox Cmd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Sandbox Cmd": {
+      "main": [
+        [
+          {
+            "node": "After Setup Sandbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Setup Sandbox": {
+      "main": [
+        [
+          {
+            "node": "Clone Repository Cmd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clone Repository Cmd": {
+      "main": [
+        [
+          {
+            "node": "After Clone Repo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Clone Repo": {
+      "main": [
+        [
+          {
+            "node": "Load Context Bundle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Context Bundle": {
+      "main": [
+        [
+          {
+            "node": "Build Tests Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Tests Prompt": {
+      "main": [
+        [
+          {
+            "node": "Geenrate Test Api",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Tests API": {
+      "main": [
+        []
+      ]
+    },
+    "Parse Tests Response": {
+      "main": [
+        [
+          {
+            "node": "Write Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Tests": {
+      "main": [
+        [
+          {
+            "node": "Build Implementation Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Implementation Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate Implementation API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Implementation API": {
+      "main": [
+        []
+      ]
+    },
+    "Parse Implementation Response": {
+      "main": [
+        [
+          {
+            "node": "Write Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Files": {
+      "main": [
+        [
+          {
+            "node": "Run Validation Cmd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Validation Cmd": {
+      "main": [
+        [
+          {
+            "node": "Parse Validation Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Validation Result": {
+      "main": [
+        [
+          {
+            "node": "IF Validation Passed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Validation Passed": {
+      "main": [
+        [
+          {
+            "node": "Package Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Failure Analysis Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Failure Analysis Prompt": {
+      "main": [
+        [
+          {
+            "node": "Analyze Failure API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Failure API": {
+      "main": [
+        []
+      ]
+    },
+    "Parse Failure Analysis": {
+      "main": [
+        [
+          {
+            "node": "IF Retry Allowed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Retry Allowed": {
+      "main": [
+        [
+          {
+            "node": "Build Patch Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Package Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Patch Prompt": {
+      "main": [
+        [
+          {
+            "node": "Generate Patch API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Patch API": {
+      "main": [
+        []
+      ]
+    },
+    "Parse Patch Response": {
+      "main": [
+        [
+          {
+            "node": "Apply Patch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Patch": {
+      "main": [
+        [
+          {
+            "node": "Run Validation Retry Cmd",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Validation Retry Cmd": {
+      "main": [
+        [
+          {
+            "node": "Parse Retry Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Retry Result": {
+      "main": [
+        [
+          {
+            "node": "Package Handoff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Package Handoff": {
+      "main": [
+        [
+          {
+            "node": "Return Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "haiku test generator": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Geenrate Test Api",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Geenrate Test Api": {
+      "main": [
+        [
+          {
+            "node": "Parse Tests Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Implementation API1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Implementation API1": {
+      "main": [
+        [
+          {
+            "node": "Parse Implementation Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Analyze Failure API1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Patch API1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Patch API1": {
+      "main": [
+        [
+          {
+            "node": "Parse Patch Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Failure API1": {
+      "main": [
+        [
+          {
+            "node": "Parse Failure Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Generate Implementation API1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Geenrate Test Api",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "4bfbc975-06b1-4279-9e06-36cdb5470382",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2c04d3ce7f8d6212557034a7e3e9657dddcb2a5eeeec15532b89aef0ced06bc4"
+  },
+  "id": "UVXZrODtgV7tgo1H",
+  "tags": [
+    {
+      "updatedAt": "2026-05-06T20:35:02.864Z",
+      "createdAt": "2026-05-06T20:35:02.864Z",
+      "id": "CyBDvLwOGdH7kyz2",
+      "name": "logitruck-factory"
+    }
+  ]
+}
