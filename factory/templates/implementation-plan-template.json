@@ -1,18 +1,17 @@
 {
   "featureName": "",
-  "featureArchetype": "",
+  "featureArchetype": "mobile-screen-feature",
   "secondaryArchetypes": [],
   "summary": "",
   "businessIntent": {
     "problem": "",
     "affectedRoles": [],
     "expectedOutcome": "",
-    "operationalCriticality": "low | medium | high | critical"
+    "operationalCriticality": "medium"
   },
   "selectedBuildingBlocks": [
     {
-      "name": "",
-      "path": "factory/knowledge/building-blocks/",
+      "name": "testing-guide",
       "reason": "",
       "required": true
     }
@@ -25,7 +24,7 @@
     "knownAntiPatternsToAvoid": []
   },
   "architectureImpact": {
-    "riskLevel": "low | medium | high | critical",
+    "riskLevel": "medium",
     "nativeRisk": false,
     "touchesFirebase": false,
     "touchesNavigation": false,
@@ -50,7 +49,7 @@
         "project": "",
         "description": "",
         "buildingBlocks": [],
-        "risk": "low | medium | high | critical"
+        "risk": "low"
       }
     ],
     "modify": [
@@ -59,14 +58,14 @@
         "project": "",
         "reason": "",
         "buildingBlocks": [],
-        "risk": "low | medium | high | critical"
+        "risk": "low"
       }
     ],
     "doNotTouch": []
   },
   "testingStrategy": {
     "testFirst": true,
-    "testType": "pure-unit | hook | component | firestore-hook | cloud-function | integration | build-only",
+    "testType": "hook",
     "requiredMocks": [],
     "avoid": [],
     "commands": []

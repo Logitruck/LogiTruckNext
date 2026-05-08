@@ -16,17 +16,17 @@ Firestore is eventually consistent and has no stored procedures. Cross-collectio
 
 | File | Trigger | Path | What it maintains |
 |---|---|---|---|
-| `LogiFunctionsV2/functions/inspections/inspections.js` | `onDocumentCreated` + `onDocumentUpdated` | `vendor_vehicles/{vendorID}/vehicles/{vehicleID}/inspections/{inspectionID}` | Vehicle summary, dispatcher summary, status history |
-| `LogiFunctionsV2/functions/dispatch/dispatchv2.js` | `onDocumentUpdated` | Inspections subcollection | Activates pending jobs when inspection is approved |
-| `LogiFunctionsV2/functions/distributeRequest/distributeRequest.js` | `onDocumentCreated` | `requests/{requestID}` | Fan-out to vendor_requests, push notifications |
-| `LogiFunctionsV2/functions/deels/onRequestUpdated.js` | `onDocumentUpdated` | `requests/{requestID}` | Status machine, project creation |
+| `functions/triggers/inspections/inspections.js` | `onDocumentCreated` + `onDocumentUpdated` | `vendor_vehicles/{vendorID}/vehicles/{vehicleID}/inspections/{inspectionID}` | Vehicle summary, dispatcher summary, status history |
+| `legacy: dispatch/dispatchv2.js` | `onDocumentUpdated` | Inspections subcollection | Activates pending jobs when inspection approved (legacy-removed — no current equivalent) |
+| `functions/triggers/distributeRequest/distributeRequest.js` | `onDocumentCreated` | `requests/{requestID}` | Fan-out to vendor_requests, push notifications |
+| `functions/triggers/deels/onRequestUpdated.js` | `onDocumentUpdated` | `requests/{requestID}` | Status machine, project creation |
 
 ---
 
 ## Canonical Created Trigger
 
 ```js
-// LogiFunctionsV2/functions/inspections/inspections.js
+// functions/triggers/inspections/inspections.js
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { logger } = require('firebase-functions');
 

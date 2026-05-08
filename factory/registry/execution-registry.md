@@ -188,9 +188,11 @@ eas.json
 firebase.json
 firestore.rules
 storage.rules
-functions/src/payments/
-functions/src/auth/
-functions/src/orchestration/
+functions/index.js
+functions/app/
+functions/triggers/
+functions/landing/
+functions/core/
 ```
 
 ---

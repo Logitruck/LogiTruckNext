@@ -54,8 +54,10 @@ draft → preparing_list → waiting_list → sent_list → review_documents →
 
 ### Request model — initial state
 
+The `Request` class pattern below is from the legacy `LogiTruckNet` app (different codebase). No equivalent model class exists in the current repo — requests are created as plain objects. The pattern (constructor validation + `toFirestore()`) remains the recommended approach for any new model implementation:
+
 ```js
-// LogiTruckNet/src/features/requests/models/Request.js
+// Pattern reference — legacy LogiTruckNet app, not in current codebase
 export class Request {
   constructor({ createdBy, vendorID, origin, destination, cargo, rideType, ... }) {
     if (!origin?.lat || !origin?.lon) throw new Error('Missing origin coordinates');
@@ -80,7 +82,7 @@ Every request starts as `'open'`. The `Request` model validates required fields 
 ## Transition: open → pending (distributeRequest trigger)
 
 ```js
-// LogiFunctionsV2/functions/distributeRequest/distributeRequest.js
+// functions/triggers/distributeRequest/distributeRequest.js
 // onDocumentCreated('requests/{requestID}')
 
 // 1. Geo + category matching

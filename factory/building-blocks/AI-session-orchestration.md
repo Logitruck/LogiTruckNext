@@ -16,11 +16,11 @@ AI sessions require: (1) durable conversation history that survives client recon
 
 | File | Role |
 |---|---|
-| `LogiFunctionsV2/functions/landing/saveInvestorTurn.js` | `onRequest` POST — persists one turn to Firestore |
-| `LogiFunctionsV2/functions/landing/finalizeInvestorSession.js` | `onRequest` POST — reads all turns, runs GPT-4o, writes analysis |
-| `LogiFunctionsV2/functions/openai/investorContext.js` | `onRequest` GET/POST — reads curated context document |
-| `LogiFunctionsV2/functions/openai/marketStudy.js` | `onRequest` — similar pattern for market study context |
-| `LogiFunctionsV2/functions/openai/openai.js` | Orphaned `chatAssistant` — Assistants API polling loop (not used in production) |
+| `functions/landing/saveInvestorTurn.js` | `onRequest` POST — persists one turn to Firestore |
+| `functions/landing/finalizeInvestorSession.js` | `onRequest` POST — reads all turns, runs GPT-4o, writes analysis |
+| `functions/landing/openai/investorContext.js` | `onRequest` GET/POST — reads curated context document (exported as `getLogiTruckInvestorContext`) |
+| `functions/landing/openai/marketStudy.js` | `onRequest` — similar pattern for market study context (exported as `getLogiTruckMarketStudy`) |
+| `functions/app/openai/openai.js` | Orphaned `chatAssistant` — Assistants API polling loop (not used in production) |
 
 ---
 
@@ -50,7 +50,7 @@ Client session start
 ## saveInvestorTurn — Turn Persistence
 
 ```js
-// LogiFunctionsV2/functions/landing/saveInvestorTurn.js
+// functions/landing/saveInvestorTurn.js
 exports.saveLogiTruckInvestorTurn = onRequest({ cors: true }, async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
 
@@ -93,7 +93,7 @@ exports.saveLogiTruckInvestorTurn = onRequest({ cors: true }, async (req, res) =
 ## finalizeInvestorSession — Post-session Analysis
 
 ```js
-// LogiFunctionsV2/functions/landing/finalizeInvestorSession.js
+// functions/landing/finalizeInvestorSession.js
 exports.finalizeInvestorSession = onRequest(
   { cors: true, timeoutSeconds: 120 },
   async (req, res) => {
@@ -174,7 +174,7 @@ The system prompt instructs GPT-4o to return a JSON object with this schema:
 ## Context Hydration — investorContext.js
 
 ```js
-// LogiFunctionsV2/functions/openai/investorContext.js
+// functions/landing/openai/investorContext.js
 exports.getLogiTruckInvestorContext = onRequest({ cors: true }, async (req, res) => {
   const snap = await db.collection('logitruck_public_context').doc('investor_v1').get();
 
@@ -226,7 +226,7 @@ logitruck_investor_agent_sessions/{sessionId}
 
 ## Orphaned Pattern — OpenAI Assistants API (chatAssistant)
 
-`LogiFunctionsV2/functions/openai/openai.js` contains a `chatAssistant` function using the Assistants API with a polling loop:
+`functions/app/openai/openai.js` contains a `chatAssistant` function using the Assistants API with a polling loop:
 
 ```js
 // Orphaned — not called from production clients (replaced by aiSupport module)

@@ -16,12 +16,12 @@ Callable functions execute with Firebase Admin SDK privileges (no security rules
 
 | File | Auth pattern | Guard type |
 |---|---|---|
-| `distributeRequest/acceptVendorOffer.js` | `request.auth?.uid` + HttpsError | Auth + precondition |
-| `jobs/assignCarrierProjectJob.js` | `request.auth` presence check | Auth only |
-| `tickets/processJobTicket.js` | `req.auth` presence check | Auth only |
-| `distributeRequest/sendChecklist.js` | `request.auth?.uid` + ownership check | Auth + ownership |
-| `chat/chatv2.js` | `validateRequiredFields()` helper | Input validation helper |
-| `stripe/stripeconnect.js` | `data.auth.uid` **(BROKEN — v1 pattern)** | **Risk** |
+| `functions/app/jobs/assignCarrierProjectJob.js` | `request.auth` presence check | Auth only |
+| `functions/app/tickets/processJobTicket.js` | `req.auth` presence check | Auth only |
+| `functions/app/vendorUser/createVendorUser.js` | `request.auth?.uid` + input validation | Auth + validation |
+| `functions/app/chat/chatv2.js` | `validateRequiredFields()` helper | Input validation helper |
+| `legacy: distributeRequest/sendChecklist.js` | `request.auth?.uid` + ownership check | Auth + ownership (legacy-removed — pattern still valid) |
+| `legacy: stripe/stripeconnect.js` | `data.auth.uid` **(BROKEN — v1 pattern)** | **Do not replicate — legacy-removed** |
 
 ---
 

@@ -54,6 +54,41 @@ query(collection(db, 'users'),
 
 Key fields: `id`, `email`, `firstName`, `lastName`, `vendorID`, `activeVendorID`, `role`, `rolesArray`, `preferredLanguage`, `profilePictureURL`
 
+### vendors
+
+`vendors` is a **flat collection** — NOT the vendorID-as-container pattern. Each doc IS the vendor (carrier company). The doc ID is the `vendorID`.
+
+```typescript
+// Admin SDK (Cloud Functions) — full scan for marketplace distribution
+const vendorSnapshot = await db.collection('vendors').get();
+
+// Direct vendor doc read
+const vendorRef = db.collection('vendors').doc(vendorID);
+const vendorSnap = await vendorRef.get();
+
+// Create a new vendor (callable function — functions/app/carrier/createCarrier.js)
+await db.collection('vendors').doc(vendorID).set({
+  vendorID,
+  name: companyName,
+  searchKeywords: [companyName.toLowerCase()],
+  serviceCategoryIDs: [],
+  status: 'active',
+  createdBy: adminUID,
+  createdAt: FieldValue.serverTimestamp(),
+  updatedAt: FieldValue.serverTimestamp(),
+});
+```
+
+Key fields: `vendorID`, `name`, `searchKeywords`, `serviceCategoryIDs`, `status`, `createdBy`, `createdAt`, `updatedAt`
+
+**`serviceCategoryIDs` is the matching key** — `distributeRequest.js` compares this against the request's `rideType.id` to determine which vendors are eligible for a new request.
+
+**Write ownership:** Cloud Functions only (`createCarrier` callable, platform admin tools). Never written from a client hook.
+
+**Read ownership:** `distributeRequest` trigger reads the full collection. Client apps do NOT read `vendors` directly — they resolve vendorID from the user profile (`currentUser.vendorID`).
+
+---
+
 ### vendor_users
 
 ```typescript
@@ -283,6 +318,7 @@ Affected collections: `channels/*/messages`, `channelsAI/*/messages`, `social_fe
 
 | Collection | Who writes | Who must NOT write |
 |-----------|-----------|-------------------|
+| `vendors` | `createCarrier` callable (Cloud Function) | Any client hook |
 | `users` | Auth user (self), profile update hook | Other users |
 | `vendor_users/.../users` | Same user (mirror), propagateUserProfileUpdates trigger | Any other client |
 | `vendor_vehicles/.../vehicles` | Carrier dispatcher (job assignment fields) | Driver (read-only) |
@@ -364,6 +400,6 @@ Load `firestore-data-model-access` whenever a feature generates:
 - Firestore reads/writes for any of the collections above
 - Hook patterns that need to know vendorID resolution
 - Cloud Function access to Firestore collections
-- Any query that involves `vendor_users`, `vendor_vehicles`, `requests`, `vendor_requests`, `project_channels`, `channels`, or `carrier_inspections`
+- Any query that involves `vendors`, `vendor_users`, `vendor_vehicles`, `requests`, `vendor_requests`, `project_channels`, `channels`, or `carrier_inspections`
 
 This building block is a companion to `hook-service-pattern` and `realtime-firestore-listener`. Use them together.

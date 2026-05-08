@@ -1,0 +1,245 @@
+{
+  "featureName": "createCarrier",
+  "featureArchetype": "cloud-function-feature",
+  "summary": "onCall Cloud Function that creates a carrier company (vendor doc) and provisions its first admin user. Creates vendors/{vendorID}, users/{uid}, and vendor_users/{vendorID}/users/{uid} atomically. Used to onboard new carrier companies onto the LogiTruck platform.",
+  "businessIntent": {
+    "problem": "Carrier companies must be provisioned server-side: the vendorID container must be created before any user can be associated to a company, and the admin user's auth account + Firestore profile must be created atomically to avoid orphaned accounts.",
+    "affectedRoles": ["carrier"],
+    "expectedOutcome": "Calling createCarrier produces a verified vendor doc at vendors/{vendorID}, a Firebase Auth account for the admin, and dual-written profile at users/{uid} + vendor_users/{vendorID}/users/{uid}. Returns vendorID and adminUID to the caller.",
+    "operationalCriticality": "high"
+  },
+  "selectedBuildingBlocks": [
+    {
+      "name": "idempotent-event-processing",
+      "reason": "getUserByEmailSafe check prevents duplicate Firebase Auth account creation if called twice with the same adminEmail",
+      "required": true
+    },
+    {
+      "name": "firestore-data-model-access",
+      "reason": "Function writes to vendors/{vendorID}, users/{uid}, and vendor_users/{vendorID}/users/{uid} — all three collections require correct path and field knowledge",
+      "required": true
+    }
+  ],
+  "resolvedBuildingBlocks": [
+    "callable-function-pattern",
+    "callable-auth-pattern",
+    "cloud-function-structure",
+    "testing-guide",
+    "project-structure-imports",
+    "idempotent-event-processing",
+    "firestore-data-model-access"
+  ],
+  "repoContext": {
+    "projectsAffected": ["functions"],
+    "relevantModules": ["functions/app/vendorUser/createVendorUser.js"],
+    "referenceFiles": [
+      "functions/app/vendorUser/createVendorUser.js",
+      "functions/app/jobs/assignCarrierProjectJob.js",
+      "functions/index.js",
+      "functions/core/user.js"
+    ],
+    "existingPatternsToFollow": [
+      "Auth check via request.auth?.uid as first statement",
+      "getUserByEmailSafe from functions/core/user.js for idempotent user lookup",
+      "Dual-write to users/{uid} and vendor_users/{vendorID}/users/{uid} with merge:true",
+      "CommonJS exports — no ES modules"
+    ],
+    "knownAntiPatternsToAvoid": [
+      "data.auth (v1 onCall pattern — always use request.auth)",
+      "Creating Firebase Auth user without checking if email already exists first",
+      "Writing to vendor_users/{vendorID} parent doc — it must remain an empty container",
+      "Calling admin.initializeApp() inside the function file"
+    ]
+  },
+  "architectureImpact": {
+    "riskLevel": "high",
+    "nativeRisk": false,
+    "touchesFirebase": true,
+    "touchesNavigation": false,
+    "touchesCloudFunctions": true,
+    "touchesPayments": false,
+    "touchesAI": false,
+    "touchesLanding": false,
+    "requiresHumanApproval": false
+  },
+  "moduleSystem": "CommonJS",
+  "dataModelsTouched": [
+    {
+      "collection": "vendors",
+      "operations": ["create"],
+      "notes": "Primary write — creates the vendor company doc. vendorID = uuid(). Fields: vendorID, name, searchKeywords, serviceCategoryIDs, status, createdBy, createdAt, updatedAt"
+    },
+    {
+      "collection": "users",
+      "operations": ["write"],
+      "notes": "Admin user global profile. merge:true to handle existing accounts. Fields: id, email, firstName, lastName, vendorID, role, rolesArray, createdAt"
+    },
+    {
+      "collection": "vendor_users",
+      "subcollection": "users",
+      "operations": ["write"],
+      "notes": "Admin user scoped to vendor. path: vendor_users/{vendorID}/users/{uid}. Mirror of users/{uid} for vendor-scoped queries. merge:true"
+    }
+  ],
+  "projectAreasTouched": ["functions/app/", "functions/index.js"],
+  "runtimeDependencies": {
+    "npmPackages": ["uuid"],
+    "firebaseServices": ["firestore", "auth", "functions"],
+    "externalAPIs": [],
+    "environmentVariables": []
+  },
+  "functionSpec": {
+    "exportName": "createCarrier",
+    "type": "onCall",
+    "authentication": "required",
+    "input": {
+      "companyName": "string — display name of the carrier company",
+      "adminEmail": "string — email for the first admin user",
+      "adminFirstName": "string — first name of the admin",
+      "adminLastName": "string (optional) — last name of the admin"
+    },
+    "output": {
+      "success": "boolean",
+      "vendorID": "string — the generated UUID for the new vendor",
+      "adminUID": "string — Firebase Auth UID of the admin user"
+    },
+    "sequence": [
+      "1. Validate request.auth?.uid — throw HttpsError('unauthenticated') if missing",
+      "2. Validate required inputs: companyName, adminEmail, adminFirstName — throw HttpsError('invalid-argument') if any missing",
+      "3. Generate vendorID = uuidv4()",
+      "4. Write vendors/{vendorID} with { vendorID, name: companyName, searchKeywords: [companyName.toLowerCase()], serviceCategoryIDs: [], status: 'active', createdBy: authUID, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }",
+      "5. Call getUserByEmailSafe(adminEmail) from functions/core/user.js — returns existing Firebase Auth user or null",
+      "6. If no existing user: call admin.auth().createUser({ email: adminEmail, displayName: adminFirstName + ' ' + adminLastName })",
+      "7. Write users/{uid} with merge:true — { id: uid, email, firstName, lastName, vendorID, role: 'carrier', rolesArray: ['carrier'], createdAt: serverTimestamp() }",
+      "8. Write vendor_users/{vendorID}/users/{uid} with merge:true — same profile fields",
+      "9. Return { success: true, vendorID, adminUID: uid }"
+    ],
+    "idempotencyNotes": "getUserByEmailSafe prevents duplicate Firebase Auth account on retry. vendors/{vendorID} uses uuid so re-call creates a new vendor — caller must not retry without a new vendorID.",
+    "errorHandling": "unauthenticated for missing auth, invalid-argument for missing inputs, internal for unexpected Firestore/Auth errors wrapped in try/catch"
+  },
+  "files": {
+    "create": [
+      {
+        "filePath": "functions/app/carrier/createCarrier.js",
+        "project": "functions",
+        "description": "onCall function: validates auth + inputs, creates vendor doc, provisions admin user via Firebase Auth, dual-writes user profile to users/ and vendor_users/",
+        "buildingBlocks": ["callable-function-pattern", "callable-auth-pattern", "cloud-function-structure", "idempotent-event-processing", "firestore-data-model-access"],
+        "risk": "high"
+      },
+      {
+        "filePath": "functions/app/carrier/__tests__/createCarrier.test.js",
+        "project": "functions",
+        "description": "Jest tests: unauthenticated call, missing fields, duplicate email (idempotency), successful creation verifying all 3 Firestore writes",
+        "buildingBlocks": ["testing-guide"],
+        "risk": "low"
+      }
+    ],
+    "modify": [
+      {
+        "filePath": "functions/index.js",
+        "project": "functions",
+        "reason": "Register createCarrier export at the INSERT_FIREBASE_FUNCTION marker",
+        "buildingBlocks": ["cloud-function-structure"],
+        "risk": "low"
+      }
+    ],
+    "doNotTouch": [
+      "functions/core/user.js",
+      "functions/triggers/",
+      "src/"
+    ]
+  },
+  "testingStrategy": {
+    "testFirst": true,
+    "testType": "cloud-function",
+    "requiredMocks": [
+      "firebase-admin (auth + firestore)",
+      "firebase-functions/v2/https (onCall, HttpsError)",
+      "uuid (return deterministic vendorID for assertions)",
+      "functions/core/user.js (getUserByEmailSafe)"
+    ],
+    "avoid": [
+      "Real Firebase Auth calls in tests",
+      "Real Firestore writes in tests",
+      "Integration tests that require the Firebase emulator"
+    ],
+    "commands": [
+      "cd functions && npx jest app/carrier/__tests__/createCarrier.test.js --no-coverage"
+    ]
+  },
+  "validationStrategy": {
+    "sandboxCommands": [
+      "cd functions && npx jest app/carrier/__tests__/createCarrier.test.js",
+      "cd functions && node -e \"require('./app/carrier/createCarrier.js')\" 2>&1"
+    ],
+    "expectedPassingSignals": [
+      "All 4 test cases pass (unauthenticated, invalid-argument, idempotent email, successful creation)",
+      "No require errors — all imports resolve",
+      "No admin.initializeApp() call inside the function file"
+    ],
+    "failureEscalationRules": [
+      "If getUserByEmailSafe import fails: check functions/core/user.js exports",
+      "If uuid import fails: verify uuid is in functions/package.json dependencies",
+      "If test mock structure fails: load testing-guide building block and regenerate test"
+    ]
+  },
+  "factoryExecutionPlan": {
+    "steps": [
+      "Generate createCarrier.js following callable-function-pattern + idempotent-event-processing",
+      "Generate createCarrier.test.js with 4 test cases",
+      "Validate: node require check + jest run",
+      "Produce handoff with integration step: register export in functions/index.js"
+    ],
+    "maxRetries": 2,
+    "handoffRequired": true,
+    "handoffPackage": {
+      "includeGeneratedFiles": true,
+      "includeTestResults": true,
+      "includeValidationOutput": true,
+      "includeRiskNotes": true,
+      "includeClaudeCodeIntegrationSteps": true
+    }
+  },
+  "claudeCodeIntegrationPlan": {
+    "required": true,
+    "reason": "Cloud Functions require Claude Code to: register export in functions/index.js, verify getUserByEmailSafe import path, confirm no hardcoded keys, run emulator smoke test",
+    "steps": [
+      "Review generated createCarrier.js — confirm auth check is first statement",
+      "Confirm getUserByEmailSafe is imported from correct path (functions/core/user.js)",
+      "Confirm vendors/{vendorID} fields match data-model-registry.json spec",
+      "Add export to functions/index.js at INSERT_FIREBASE_FUNCTION marker",
+      "Run jest tests from functions/ directory",
+      "Run Firebase emulator smoke test with test payload"
+    ],
+    "runtimeValidation": [
+      "Firebase emulator: call createCarrier with valid payload, verify vendors/{vendorID} doc exists",
+      "Firebase emulator: call with same adminEmail twice, verify second call reuses existing UID"
+    ],
+    "simulatorValidation": [],
+    "finalCommitChecklist": [
+      "functions/app/carrier/createCarrier.js added",
+      "functions/app/carrier/__tests__/createCarrier.test.js added",
+      "functions/index.js exports.createCarrier registered",
+      "No hardcoded API keys or secrets in generated files",
+      "jest passes for createCarrier test suite"
+    ]
+  },
+  "rollbackPlan": {
+    "required": false,
+    "steps": [
+      "Remove functions/app/carrier/createCarrier.js",
+      "Remove functions/app/carrier/__tests__/createCarrier.test.js",
+      "Remove exports.createCarrier line from functions/index.js"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Unauthenticated call throws HttpsError('unauthenticated') before any Firestore read",
+    "Missing companyName, adminEmail, or adminFirstName throws HttpsError('invalid-argument') naming the missing field",
+    "Successful call creates vendors/{vendorID} with correct fields including serviceCategoryIDs: []",
+    "Admin user Firebase Auth account is created if email is new; existing account is reused if email already exists",
+    "users/{uid} and vendor_users/{vendorID}/users/{uid} are both written with merge:true",
+    "Function returns { success: true, vendorID, adminUID }",
+    "All 4 jest test cases pass in the sandbox"
+  ],
+  "openQuestions": []
+}

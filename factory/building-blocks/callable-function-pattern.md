@@ -16,18 +16,17 @@ Some operations require server-side authority: closing competing offers, creatin
 
 | File | Function name | What it does |
 |---|---|---|
-| `LogiFunctionsV2/functions/distributeRequest/acceptVendorOffer.js` | `acceptVendorOffer` | Validates offer, marks it accepted, batch-closes competing offers |
-| `LogiFunctionsV2/functions/distributeRequest/submitVendorOffer.js` | `submitVendorOffer` | Creates or updates a vendor offer on a request |
-| `LogiFunctionsV2/functions/distributeRequest/rejectVendorOffer.js` | `rejectVendorOffer` | Marks an offer rejected |
-| `LogiFunctionsV2/functions/distributeRequest/cancelRequest.js` | `cancelRequest` | Cancels a request and all its vendor_requests |
-| `LogiFunctionsV2/functions/distributeRequest/approveVendorsOffer.js` | `approveVendorOffer` | Finder approves a vendor offer after document review |
+| `functions/app/jobs/assignCarrierProjectJob.js` | `assignCarrierProjectJob` | Assigns a driver, truck, and trailer to a project job; reads 6 documents in parallel before writing |
+| `functions/app/tickets/processJobTicket.js` | `processJobTicket` | Processes a driver job ticket via OpenAI; uses `timeoutSeconds: 120` |
+| `functions/app/vendorUser/createVendorUser.js` | `createVendorUser` | Creates a vendor user account linked to a carrier company |
+| `functions/app/chat/chatv2.js` | `createChannel`, `insertMessage`, etc. | Chat channel and message management; uses `validateRequiredFields()` helper |
 
 ---
 
 ## Canonical Implementation
 
 ```js
-// LogiFunctionsV2/functions/distributeRequest/acceptVendorOffer.js
+// Canonical onCall pattern (functions/app/jobs/assignCarrierProjectJob.js follows this structure)
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 

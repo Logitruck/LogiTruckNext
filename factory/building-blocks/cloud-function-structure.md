@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Documents the structural conventions used across all Cloud Functions v2 in `LogiFunctionsV2/functions/`, covering import patterns, function types, configuration options, logging conventions, error handling, and the `index.js` export registry. Every generated or modified function must follow these patterns to be compatible with Firebase deployment.
+Documents the structural conventions used across all Cloud Functions v2 in `functions/` (the Cloud Functions root), covering import patterns, function types, configuration options, logging conventions, error handling, and the `index.js` export registry. Every generated or modified function must follow these patterns to be compatible with Firebase deployment.
 
 ---
 
@@ -16,15 +16,14 @@ Inconsistent function structure causes runtime failures, cold-start delays, and 
 
 | File | Function types used |
 |---|---|
-| `distributeRequest/distributeRequest.js` | `onDocumentCreated` |
-| `deels/onRequestUpdated.js` | `onDocumentUpdated` |
-| `deels/onVendorRequestUpdated.js` | `onDocumentUpdated` |
-| `projects/onSetupFlagWritten.js` | `onDocumentWritten` |
-| `inspections/resetVehicleStatusDaily.js` | `onSchedule` |
-| `distributeRequest/acceptVendorOffer.js` | `onCall` |
-| `landing/saveInvestorTurn.js` | `onRequest` |
-| `tickets/processJobTicket.js` | `onCall` with `timeoutSeconds` |
-| `stripe/stripeconnect.js` | `onCall` with `setGlobalOptions` |
+| `functions/triggers/distributeRequest/distributeRequest.js` | `onDocumentCreated` |
+| `functions/triggers/deels/onRequestUpdated.js` | `onDocumentUpdated` |
+| `functions/triggers/deels/onVendorRequestUpdated.js` | `onDocumentUpdated` |
+| `functions/triggers/projects/onSetupFlagWritten.js` | `onDocumentWritten` |
+| `functions/landing/saveInvestorTurn.js` | `onRequest` |
+| `functions/app/jobs/assignCarrierProjectJob.js` | `onCall` |
+| `functions/app/tickets/processJobTicket.js` | `onCall` with `timeoutSeconds` |
+| `functions/app/chat/chatv2.js` | `onCall` + `onDocumentCreated` |
 
 ---
 
@@ -60,7 +59,7 @@ const db = getFirestore();
 ### onCall — authenticated callable
 
 ```js
-// Used in: acceptVendorOffer.js, assignCarrierProjectJob.js, processJobTicket.js
+// Used in: functions/app/jobs/assignCarrierProjectJob.js, functions/app/tickets/processJobTicket.js
 exports.myCallable = onCall(async (request) => {
   const authUID = request.auth?.uid;
   if (!authUID) throw new HttpsError('unauthenticated', 'Auth required');
@@ -81,7 +80,7 @@ exports.processJobTicket = onCall(
 ### onRequest — HTTP endpoint
 
 ```js
-// Used in: saveInvestorTurn.js, finalizeInvestorSession.js, investorContext.js
+// Used in: functions/landing/saveInvestorTurn.js, functions/landing/finalizeInvestorSession.js
 exports.myEndpoint = onRequest({ cors: true }, async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const { field } = req.body;
@@ -93,7 +92,7 @@ exports.myEndpoint = onRequest({ cors: true }, async (req, res) => {
 ### onDocumentCreated
 
 ```js
-// Used in: distributeRequest.js, inspections.js, businessgraphv2.js
+// Used in: functions/triggers/distributeRequest/distributeRequest.js, functions/triggers/inspections/inspections.js
 exports.onEntityCreated = onDocumentCreated(
   'collection/{entityID}',
   async (event) => {
@@ -108,7 +107,7 @@ exports.onEntityCreated = onDocumentCreated(
 ### onDocumentUpdated
 
 ```js
-// Used in: onRequestUpdated.js, onVendorRequestUpdated.js, triggers.js
+// Used in: functions/triggers/deels/onRequestUpdated.js, functions/triggers/deels/onVendorRequestUpdated.js
 exports.onEntityUpdated = onDocumentUpdated(
   'collection/{entityID}',
   async (event) => {
@@ -123,7 +122,7 @@ exports.onEntityUpdated = onDocumentUpdated(
 ### onDocumentWritten (create + update + delete)
 
 ```js
-// Used in: onSetupFlagWritten.js
+// Used in: functions/triggers/projects/onSetupFlagWritten.js
 exports.onFlagWritten = onDocumentWritten(
   'parent/{parentID}/flags/{role}',
   async (event) => {
@@ -137,7 +136,7 @@ exports.onFlagWritten = onDocumentWritten(
 ### onSchedule — cron job
 
 ```js
-// Used in: resetVehicleStatusDaily.js
+// Pattern reference — no onSchedule functions in current functions/ repo; resetVehicleStatusDaily.js is legacy-removed
 const resetVehicleOperationalStatusDaily = onSchedule(
   {
     schedule: '0 4 * * *',  // 4am daily
@@ -159,7 +158,7 @@ module.exports = { resetVehicleOperationalStatusDaily };
 Set once per file for functions that share region/scaling config:
 
 ```js
-// stripeconnect.js
+// Pattern reference — stripeconnect.js is legacy-removed; use this when multiple functions in the same file share region config
 const { setGlobalOptions } = require('firebase-functions/v2/options');
 setGlobalOptions({ region: 'us-central1', maxInstances: 10 });
 ```
@@ -171,7 +170,7 @@ Individual function overrides take precedence over `setGlobalOptions`.
 ## index.js Export Registry Pattern
 
 ```js
-// LogiFunctionsV2/functions/index.js
+// functions/index.js
 const admin = require('firebase-admin');
 admin.initializeApp();
 
@@ -224,11 +223,9 @@ try {
 
 | Risk | Location | Severity |
 |---|---|---|
-| Hardcoded OpenAI API keys | `openai.js`, `openai/utils.js`, `processJobTicket.js`, `finalizeInvestorSession.js` | **Critical** |
-| Hardcoded Stripe test key | `stripe/stripeconnect.js` line 4 | **Critical** |
-| Hardcoded FCM server key | `notifications/utils.js` line 131 | **Critical** |
-| v1 `onCall` signature in stripeconnect | `stripe/stripeconnect.js` uses `data.auth` not `request.auth` | **High** |
-| Sequential vendor loop in Firestore trigger | `distributeRequest.js` — iterates ALL vendors synchronously inside trigger | **High** |
+| Hardcoded OpenAI API keys | `functions/app/openai/openai.js`, `functions/app/tickets/processJobTicket.js`, `functions/landing/finalizeInvestorSession.js` | **Critical** |
+| Hardcoded FCM server key | `functions/notifications/utils.js` line 131 | **Critical** |
+| Sequential vendor loop in Firestore trigger | `functions/triggers/distributeRequest/distributeRequest.js` — iterates ALL vendors synchronously inside trigger | **High** |
 
 All API keys must move to `process.env` (via `.env.local` or Firebase Secret Manager) before production deployment.
 
@@ -250,13 +247,13 @@ All API keys must move to `process.env` (via `.env.local` or Firebase Secret Man
 
 ```bash
 # Verify no admin.initializeApp() in function files (only in index.js)
-grep -r "admin.initializeApp()" LogiFunctionsV2/functions --include="*.js" | grep -v index.js | grep -v node_modules
+grep -r "admin.initializeApp()" functions --include="*.js" | grep -v index.js | grep -v node_modules
 
 # Find all hardcoded API keys
-grep -r "sk-\|sk_test_\|key=" LogiFunctionsV2/functions --include="*.js" | grep -v node_modules | grep -v ".env"
+grep -r "sk-\|sk_test_\|key=" functions --include="*.js" | grep -v node_modules | grep -v ".env"
 
 # Verify all onCall functions use request.auth not data.auth
-grep -r "data\.auth" LogiFunctionsV2/functions --include="*.js" | grep -v node_modules
+grep -r "data\.auth" functions --include="*.js" | grep -v node_modules
 ```
 
 ---

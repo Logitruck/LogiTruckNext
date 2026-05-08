@@ -16,10 +16,10 @@ Business workflows span multiple Firestore collections (request, vendor_requests
 
 | File | Trigger | What it orchestrates |
 |---|---|---|
-| `LogiFunctionsV2/functions/distributeRequest/distributeRequest.js` | `onDocumentCreated('requests/{requestID}')` | Geo+category matching → fan-out to `vendor_requests/{vendorID}/requests/{requestID}` + push notifications |
-| `LogiFunctionsV2/functions/deels/onRequestUpdated.js` | `onDocumentUpdated('requests/{requestID}')` | Status machine switch → cascading batch updates across `requests`, `vendor_requests`, `project_channels`, `projects` |
-| `LogiFunctionsV2/functions/inspections/inspections.js` | `onDocumentCreated/Updated('vendor_vehicles/.../inspections/{id}')` | Projection → vehicle summary, dispatcher summary, status history |
-| `LogiFunctionsV2/functions/dispatch/dispatchv2.js` | `onDocumentUpdated` on inspections | Activates pending jobs when inspection is approved |
+| `functions/triggers/distributeRequest/distributeRequest.js` | `onDocumentCreated('requests/{requestID}')` | Geo+category matching → fan-out to `vendor_requests/{vendorID}/requests/{requestID}` + push notifications |
+| `functions/triggers/deels/onRequestUpdated.js` | `onDocumentUpdated('requests/{requestID}')` | Status machine switch → cascading batch updates across `requests`, `vendor_requests`, `project_channels`, `projects` |
+| `functions/triggers/inspections/inspections.js` | `onDocumentCreated/Updated('vendor_vehicles/.../inspections/{id}')` | Projection → vehicle summary, dispatcher summary, status history |
+| `legacy: dispatch/dispatchv2.js` | `onDocumentUpdated` on inspections | Activates pending jobs when inspection is approved (legacy-removed — no current equivalent) |
 
 ---
 

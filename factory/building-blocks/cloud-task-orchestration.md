@@ -14,12 +14,12 @@ Cloud Functions have a maximum execution time (540 seconds default, 3600 seconds
 
 ## Current State: Cloud Tasks NOT Implemented
 
-Cloud Tasks (`@google-cloud/tasks`) does not appear anywhere in the LogiFunctionsV2 codebase. All async work that requires per-item processing currently runs synchronously inside triggers or callable functions.
+Cloud Tasks (`@google-cloud/tasks`) does not appear anywhere in the current `functions/` codebase. All async work that requires per-item processing currently runs synchronously inside triggers or callable functions.
 
-The closest existing pattern to async scheduling is `onSchedule` (Firebase Scheduler):
+The closest existing pattern to async scheduling is `onSchedule` (Firebase Scheduler). The `resetVehicleStatusDaily.js` pattern below is from the legacy repo (no `onSchedule` functions exist in the current `functions/` codebase) but the pattern remains canonical for future scheduled jobs:
 
 ```js
-// inspections/resetVehicleStatusDaily.js — batch-per-vendor with onSchedule
+// Pattern reference — no onSchedule functions currently active in functions/
 const resetVehicleOperationalStatusDaily = onSchedule(
   { schedule: '0 4 * * *', timeZone: 'America/New_York', region: 'us-central1' },
   async () => {
@@ -38,7 +38,7 @@ This works for daily batch work but not for event-driven fan-out.
 ## Active Risk: distributeRequest Fan-out Loop
 
 ```js
-// distributeRequest/distributeRequest.js — CURRENT HIGH RISK PATTERN
+// functions/triggers/distributeRequest/distributeRequest.js — CURRENT HIGH RISK PATTERN
 exports.onRequestCreated = onDocumentCreated('requests/{requestID}', async (event) => {
   const vendorSnapshot = await db.collection('vendors').get();  // ALL vendors loaded
 

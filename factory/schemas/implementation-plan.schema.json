@@ -1,26 +1,28 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "LogiTruck Factory Implementation Plan",
+  "description": "Schema for feature implementation plans. Claude Code = architect/orchestrator/integrator. n8n = deterministic worker execution layer. Plans authored by Claude Code, consumed by n8n, output reviewed and integrated by Claude Code.",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "featureName",
     "featureArchetype",
     "businessIntent",
-    "repoContext",
     "architectureImpact",
-    "automationScope",
     "files",
-    "testingStrategy",
     "factoryExecutionPlan",
     "acceptanceCriteria"
   ],
   "properties": {
+
     "featureName": {
-      "type": "string"
+      "type": "string",
+      "description": "Unique camelCase identifier for this feature. Used as the n8n job name and handoff package prefix. Example: createCarrier, useVendorDrivers, DriverJobsScreen."
     },
 
     "featureArchetype": {
       "type": "string",
+      "description": "Primary archetype. Determines defaultBuildingBlocks loaded from archetype-registry.json and escalation rules applied.",
       "enum": [
         "utility-feature",
         "mobile-screen-feature",
@@ -35,136 +37,350 @@
       ]
     },
 
+    "secondaryArchetypes": {
+      "type": "array",
+      "description": "Additional archetypes whose building blocks and escalation rules are merged into this plan. Use when a feature spans multiple domains (e.g. a screen + a cloud function).",
+      "items": {
+        "type": "string",
+        "enum": [
+          "utility-feature",
+          "mobile-screen-feature",
+          "firestore-feature",
+          "cloud-function-feature",
+          "maps-tracking-feature",
+          "native-integration-feature",
+          "payments-stripe-connect-feature",
+          "ai-support-agent-feature",
+          "voice-agent-elevenlabs-feature",
+          "landing-react-vite-feature"
+        ]
+      }
+    },
+
+    "summary": {
+      "type": "string",
+      "description": "1-3 sentence plain-language description of what this plan builds and why. Shown in n8n job logs and handoff packages."
+    },
+
     "businessIntent": {
       "type": "object",
-      "required": [
-        "problem",
-        "expectedOutcome"
-      ],
+      "additionalProperties": false,
+      "required": ["problem", "expectedOutcome"],
       "properties": {
         "problem": {
-          "type": "string"
+          "type": "string",
+          "description": "The gap or pain point this feature addresses. Must justify factory execution."
         },
         "affectedRoles": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "LogiTruck roles impacted by this feature.",
+          "items": { "type": "string" }
         },
         "expectedOutcome": {
-          "type": "string"
+          "type": "string",
+          "description": "Measurable or observable result when this feature is complete."
+        },
+        "operationalCriticality": {
+          "type": "string",
+          "description": "How business-critical this feature is. Affects escalation urgency.",
+          "enum": ["low", "medium", "high", "critical"]
         }
+      }
+    },
+
+    "selectedBuildingBlocks": {
+      "type": "array",
+      "description": "Building blocks explicitly selected by Claude Code for this plan. Merged with archetype defaults by the factory to produce resolvedBuildingBlocks. Only blocks physically present in factory/building-blocks/ are valid.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "required", "reason"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Exact filename without .md extension. Must match a physical file in factory/building-blocks/.",
+            "enum": [
+              "AI-session-orchestration",
+              "AI-workflow-pipeline",
+              "assistant-session-persistence",
+              "async-lookup-then-subscribe",
+              "callable-auth-pattern",
+              "callable-function-pattern",
+              "chat-channel-orchestration",
+              "cloud-function-structure",
+              "cloud-task-orchestration",
+              "event-driven-orchestration",
+              "firestore-data-model-access",
+              "firestore-trigger-orchestration",
+              "firestore-trigger-pattern",
+              "hook-service-pattern",
+              "idempotent-event-processing",
+              "loading-empty-error-state",
+              "notification-trigger-pattern",
+              "project-structure-imports",
+              "realtime-firestore-listener",
+              "route-rendering-pattern",
+              "screen-hook-separation",
+              "stripe-payment-intent-lifecycle",
+              "testing-guide",
+              "trip-status-machine",
+              "voice-session-lifecycle"
+            ]
+          },
+          "required": {
+            "type": "boolean",
+            "description": "true = always include regardless of archetype defaults. false = include only if the block is in this archetype's optionalBuildingBlocks."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this specific feature needs this block. Must reference a concrete constraint or pattern from the codebase."
+          }
+        }
+      }
+    },
+
+    "resolvedBuildingBlocks": {
+      "type": "array",
+      "description": "Final deduplicated list computed by the factory: dedupe(archetype.defaultBuildingBlocks ∪ selectedBuildingBlocks). Populated by the factory at resolution time. Claude Code may pre-compute and include this for workflow transparency.",
+      "items": {
+        "type": "string",
+        "enum": [
+          "AI-session-orchestration",
+          "AI-workflow-pipeline",
+          "assistant-session-persistence",
+          "async-lookup-then-subscribe",
+          "callable-auth-pattern",
+          "callable-function-pattern",
+          "chat-channel-orchestration",
+          "cloud-function-structure",
+          "cloud-task-orchestration",
+          "event-driven-orchestration",
+          "firestore-data-model-access",
+          "firestore-trigger-orchestration",
+          "firestore-trigger-pattern",
+          "hook-service-pattern",
+          "idempotent-event-processing",
+          "loading-empty-error-state",
+          "notification-trigger-pattern",
+          "project-structure-imports",
+          "realtime-firestore-listener",
+          "route-rendering-pattern",
+          "screen-hook-separation",
+          "stripe-payment-intent-lifecycle",
+          "testing-guide",
+          "trip-status-machine",
+          "voice-session-lifecycle"
+        ]
       }
     },
 
     "repoContext": {
       "type": "object",
+      "additionalProperties": false,
+      "description": "Pointers into the real repository that orient the factory worker. The factory loads these files as supplementary context alongside the building block bundle.",
       "properties": {
+        "projectsAffected": {
+          "type": "array",
+          "description": "Top-level projects touched: 'functions', 'src', 'apps/web/<landing>'.",
+          "items": { "type": "string" }
+        },
         "relevantModules": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Repo-relative paths to modules or directories the factory should understand before generating.",
+          "items": { "type": "string" }
         },
         "referenceFiles": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Specific files to load as generation examples. Factory uses these to derive naming, structure, and patterns.",
+          "items": { "type": "string" }
         },
         "existingPatternsToFollow": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Named patterns or idioms already established in the codebase that the generated code must follow.",
+          "items": { "type": "string" }
+        },
+        "knownAntiPatternsToAvoid": {
+          "type": "array",
+          "description": "Specific patterns the factory must not replicate. Derived from production bugs, security issues, or architectural decisions.",
+          "items": { "type": "string" }
         }
       }
     },
 
     "architectureImpact": {
       "type": "object",
-      "required": [
-        "riskLevel",
-        "nativeRisk"
-      ],
+      "additionalProperties": false,
+      "required": ["riskLevel", "nativeRisk"],
+      "description": "Risk classification and surface area. Used by the factory to apply escalation rules from archetype-registry.json.",
       "properties": {
         "riskLevel": {
           "type": "string",
-          "enum": [
-            "low",
-            "medium",
-            "high",
-            "critical"
-          ]
+          "enum": ["low", "medium", "high", "critical"]
         },
         "nativeRisk": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "true if the feature touches Expo plugins, ios/, android/, Gradle, Pods, or native SDKs. Factory cannot execute nativeRisk:true steps — Claude Code only."
         },
-        "touchesFirebase": {
-          "type": "boolean"
-        },
+        "touchesFirebase": { "type": "boolean" },
         "touchesNavigation": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "true if this feature modifies navigator roots, deep linking, or tab/drawer configuration."
         },
-        "touchesCloudFunctions": {
-          "type": "boolean"
+        "touchesCloudFunctions": { "type": "boolean" },
+        "touchesPayments": { "type": "boolean" },
+        "touchesAI": { "type": "boolean" },
+        "touchesLanding": { "type": "boolean" },
+        "requiresHumanApproval": {
+          "type": "boolean",
+          "description": "true if any step in this plan requires a human (non-AI) sign-off. Triggers escalateToL3 or escalateToL4 in the factory."
         },
-        "touchesPayments": {
-          "type": "boolean"
-        },
-        "touchesAI": {
-          "type": "boolean"
+        "notes": {
+          "type": "string",
+          "description": "Free-text explanation of specific escalation triggers that apply to this plan."
         }
       }
     },
 
-    "automationScope": {
+    "dataModelsTouched": {
+      "type": "array",
+      "description": "Firestore collections and subcollections this feature reads from, writes to, or listens to. Collection names must match keys in factory/registry/data-model-registry.json. Used by the factory to validate Firestore access patterns before code generation.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["collection", "operations"],
+        "properties": {
+          "collection": {
+            "type": "string",
+            "description": "Root collection name as it appears in data-model-registry.json (e.g. 'users', 'vendor_users', 'requests')."
+          },
+          "subcollection": {
+            "type": "string",
+            "description": "Subcollection path segment if applicable (e.g. 'users', 'vehicles', 'inspections')."
+          },
+          "operations": {
+            "type": "array",
+            "description": "Firestore operations the generated code will perform on this collection.",
+            "items": {
+              "type": "string",
+              "enum": ["read", "write", "create", "delete", "listen", "collectionGroup"]
+            }
+          },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+
+    "projectAreasTouched": {
+      "type": "array",
+      "description": "Repository paths (relative to repo root) that this feature will create files in or modify. Must align with allowedScopes defined in archetype-registry.json for the chosen archetype.",
+      "items": { "type": "string" }
+    },
+
+    "runtimeDependencies": {
       "type": "object",
+      "additionalProperties": false,
+      "description": "External packages, Firebase services, APIs, and environment variables this feature depends on at runtime. Factory uses this to verify existing package.json coverage before generating.",
       "properties": {
-        "factoryCanCreate": {
+        "npmPackages": {
           "type": "array",
+          "description": "npm package names required. Factory flags any package not in functions/package.json or root package.json.",
+          "items": { "type": "string" }
+        },
+        "firebaseServices": {
+          "type": "array",
+          "description": "Firebase platform services required.",
           "items": {
-            "type": "string"
+            "type": "string",
+            "enum": ["auth", "firestore", "storage", "functions", "messaging", "remoteConfig"]
           }
         },
-        "factoryCanModify": {
+        "externalAPIs": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Third-party APIs called at runtime (e.g. 'Stripe', 'OpenAI', 'ElevenLabs', 'HERE Maps').",
+          "items": { "type": "string" }
+        },
+        "environmentVariables": {
+          "type": "array",
+          "description": "Secret or config keys required at runtime. Factory flags these in the risk notes — never generates code that hardcodes them.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "moduleSystem": {
+      "type": "string",
+      "description": "Module syntax the generated files must use. Determined by project area: functions/ = CommonJS, src/ = TypeScript, apps/web/ = ESM.",
+      "enum": ["CommonJS", "TypeScript", "ESM"]
+    },
+
+    "automationScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Explicit boundary between what the factory worker can do autonomously vs. what requires Claude Code or human approval.",
+      "properties": {
+        "factorySandboxOnly": {
+          "type": "boolean",
+          "description": "true = factory works in a temporary clone or sandbox, never directly in the production repo."
+        },
+        "factoryCanGenerate": {
+          "type": "array",
+          "description": "List of files or artifacts the factory worker may autonomously generate.",
+          "items": { "type": "string" }
+        },
+        "factoryCanValidate": {
+          "type": "array",
+          "description": "Shell commands the factory may run to validate its output (jest, tsc, etc.).",
+          "items": { "type": "string" }
+        },
+        "claudeCodeMustIntegrate": {
+          "type": "boolean",
+          "description": "true = Claude Code must review and manually integrate factory output into the production repo. Factory output is never auto-merged."
         },
         "claudeCodeOnly": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Tasks that are out of scope for the factory worker. Claude Code performs these after reviewing the handoff package.",
+          "items": { "type": "string" }
         },
         "humanApprovalRequired": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Steps that require a human (non-AI) decision before proceeding. Triggers escalateToL3 or L4.",
+          "items": { "type": "string" }
         }
       }
     },
 
     "files": {
       "type": "object",
+      "additionalProperties": false,
+      "description": "Complete inventory of files the factory will create or modify. doNotTouch lists files that must never be changed by this plan.",
       "properties": {
         "create": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "filePath",
-              "description"
-            ],
+            "additionalProperties": false,
+            "required": ["filePath", "description"],
             "properties": {
               "filePath": {
-                "type": "string"
+                "type": "string",
+                "description": "Repo-relative path where the factory will write the new file."
+              },
+              "project": {
+                "type": "string",
+                "description": "Top-level project area: 'functions', 'src', 'apps/web/<landing>'."
               },
               "description": {
-                "type": "string"
+                "type": "string",
+                "description": "What this file contains and its role in the feature."
+              },
+              "buildingBlocks": {
+                "type": "array",
+                "description": "Subset of resolvedBuildingBlocks the factory must apply when generating this specific file.",
+                "items": { "type": "string" }
+              },
+              "risk": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"]
               }
             }
           }
@@ -173,51 +389,264 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "filePath",
-              "reason"
-            ],
+            "additionalProperties": false,
+            "required": ["filePath", "reason"],
             "properties": {
               "filePath": {
-                "type": "string"
+                "type": "string",
+                "description": "Repo-relative path of the existing file to modify."
               },
+              "project": { "type": "string" },
               "reason": {
-                "type": "string"
+                "type": "string",
+                "description": "Why this existing file must be changed (e.g. 'register new Cloud Function export')."
+              },
+              "buildingBlocks": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "risk": {
+                "type": "string",
+                "enum": ["low", "medium", "high", "critical"]
               }
             }
           }
         },
         "doNotTouch": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Files the factory must never modify. Used to protect production-critical code from accidental mutation.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "functionSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Detailed specification for a Cloud Function generated by this plan. Used for cloud-function-feature archetype. The factory uses this to generate the function body deterministically without architecture decisions.",
+      "required": ["exportName", "type"],
+      "properties": {
+        "exportName": {
+          "type": "string",
+          "description": "The name used in exports.X = ... in functions/index.js."
+        },
+        "type": {
+          "type": "string",
+          "description": "Firebase Functions v2 trigger type.",
+          "enum": ["onCall", "onRequest", "onDocumentCreated", "onDocumentUpdated", "onDocumentWritten", "onSchedule"]
+        },
+        "authentication": {
+          "type": "string",
+          "description": "Auth requirement. 'required' = request.auth?.uid guard as first statement. 'none' = public (landing functions only). 'secret-header' = custom header check for HTTP triggers.",
+          "enum": ["required", "none", "secret-header"]
+        },
+        "input": {
+          "type": "object",
+          "description": "Named parameters the function receives via request.data. Free-form — document each field name with type and required/optional.",
+          "additionalProperties": true
+        },
+        "output": {
+          "type": "object",
+          "description": "Fields returned on success. Free-form — document each field name with type.",
+          "additionalProperties": true
+        },
+        "sequence": {
+          "type": "array",
+          "description": "Numbered steps the function body must execute in order. The factory follows this sequence literally.",
+          "items": { "type": "string" }
+        },
+        "idempotencyNotes": {
+          "type": "string",
+          "description": "How re-runs of this function converge to a consistent state. Required when the function creates Auth users or writes to multiple collections."
+        },
+        "errorHandling": {
+          "type": "string",
+          "description": "Error strategy. Always: wrap in try/catch, re-throw HttpsError as-is, wrap unknown errors in HttpsError('internal', ...)."
+        }
+      }
+    },
+
+    "hookSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Detailed specification for a React hook generated by this plan. Used for firestore-feature and mobile-screen-feature archetypes.",
+      "required": ["hookName"],
+      "properties": {
+        "hookName": {
+          "type": "string",
+          "description": "camelCase hook name starting with 'use'. Determines file name: {hookName}.ts."
+        },
+        "returnShape": {
+          "type": "string",
+          "description": "TypeScript-style return type. All hooks must return { data, loading, error } at minimum.",
+          "default": "{ data, loading, error }"
+        },
+        "firestorePaths": {
+          "type": "array",
+          "description": "Firestore collection/document paths this hook reads from. Use placeholders like {vendorID}, {uid}.",
+          "items": { "type": "string" }
+        },
+        "listenerType": {
+          "type": "string",
+          "description": "How the hook reads Firestore data.",
+          "enum": ["onSnapshot", "getDocs", "getDoc", "mixed"]
+        },
+        "vendorIDRequired": {
+          "type": "boolean",
+          "description": "true = hook must resolve vendorID = currentUser?.activeVendorID ?? currentUser?.vendorID ?? null before any Firestore call."
+        },
+        "asyncLookupRequired": {
+          "type": "boolean",
+          "description": "true = hook must use the async-lookup-then-subscribe pattern with cancelled ref. Triggers auto-inclusion of async-lookup-then-subscribe building block."
+        },
+        "cleanupRequired": {
+          "type": "boolean",
+          "description": "true = useEffect must return the Firestore unsubscribe function. Always true when listenerType is onSnapshot."
+        }
+      }
+    },
+
+    "screenSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Detailed specification for a React Native screen generated by this plan. Used for mobile-screen-feature archetype.",
+      "required": ["screenName", "role"],
+      "properties": {
+        "screenName": {
+          "type": "string",
+          "description": "PascalCase screen name. Determines file path: src/{role}/screens/{screenName}/{screenName}.tsx."
+        },
+        "role": {
+          "type": "string",
+          "description": "Which role owns this screen.",
+          "enum": ["carrier", "driver", "finder", "shared", "core"]
+        },
+        "pattern": {
+          "type": "string",
+          "description": "File layout pattern. 'folder' (preferred for new screens) = ScreenName/ScreenName.tsx + styles.ts. 'flat' = ScreenName.tsx in parent dir.",
+          "enum": ["folder", "flat"]
+        },
+        "navigationParams": {
+          "type": "array",
+          "description": "Route params this screen expects via navigation. Used to generate the TypeScript param type.",
+          "items": { "type": "string" }
+        },
+        "usesHooks": {
+          "type": "array",
+          "description": "Hook names this screen imports. Factory will verify these hooks exist or mark them as dependencies to generate.",
+          "items": { "type": "string" }
         }
       }
     },
 
     "testingStrategy": {
       "type": "object",
+      "additionalProperties": false,
+      "description": "How the factory generates and runs tests for this feature.",
       "properties": {
+        "testFirst": {
+          "type": "boolean",
+          "description": "true = factory generates the test file before the implementation file (TDD mode)."
+        },
         "testType": {
-          "type": "string"
+          "type": "string",
+          "description": "Category of test the factory generates.",
+          "enum": [
+            "pure-unit",
+            "hook",
+            "component",
+            "firestore-hook",
+            "cloud-function",
+            "integration",
+            "build-only"
+          ]
         },
         "requiredMocks": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "jest.mock() statements required at the top of the test file. Include module path and any necessary factory return shape.",
+          "items": { "type": "string" }
         },
         "avoid": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Patterns the factory must not use in generated tests (e.g. 'real Firebase emulator calls', 'import from @testing-library/react-hooks').",
+          "items": { "type": "string" }
         },
         "commands": {
           "type": "array",
-          "items": {
-            "type": "string"
+          "description": "Jest commands the factory runs to validate the generated test file.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "validationStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Commands and signals the factory uses to verify generated output before producing the handoff package. Failed validation triggers a retry up to factoryExecutionPlan.maxRetries.",
+      "properties": {
+        "sandboxCommands": {
+          "type": "array",
+          "description": "Shell commands run against generated output in the sandbox (jest, tsc --noEmit, etc.).",
+          "items": { "type": "string" }
+        },
+        "expectedPassingSignals": {
+          "type": "array",
+          "description": "Strings or patterns that must appear in command stdout for the validation step to be considered passing.",
+          "items": { "type": "string" }
+        },
+        "failureEscalationRules": {
+          "type": "array",
+          "description": "Rules that determine which building block to reload and regenerate with when a specific validation failure occurs.",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "taskGraph": {
+      "type": "array",
+      "description": "Granular ordered task list for n8n worker execution. Enables the factory to execute tasks in parallel where dependsOn allows, and retry individual tasks without restarting the full pipeline.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["taskId", "type"],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "description": "Unique identifier for this task within the plan. Referenced by other tasks in dependsOn."
+          },
+          "type": {
+            "type": "string",
+            "description": "generate = produce a file via Haiku. validate = run a shell command. register = add an export or route entry. review = Claude Code checkpoint.",
+            "enum": ["generate", "validate", "register", "review"]
+          },
+          "dependsOn": {
+            "type": "array",
+            "description": "taskIds that must complete successfully before this task starts.",
+            "items": { "type": "string" }
+          },
+          "generates": {
+            "type": "string",
+            "description": "Repo-relative file path produced by this task. Required for type=generate."
+          },
+          "command": {
+            "type": "string",
+            "description": "Shell command executed by this task. Required for type=validate."
+          },
+          "buildingBlocks": {
+            "type": "array",
+            "description": "Subset of resolvedBuildingBlocks the Haiku worker receives as context for this specific task.",
+            "items": { "type": "string" }
+          },
+          "maxRetries": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5,
+            "description": "Maximum retry attempts for this individual task before escalating."
+          },
+          "failureAction": {
+            "type": "string",
+            "description": "What n8n does if this task fails all retries. escalate = create handoff note for Claude Code. skip = continue pipeline without this task. abort = halt pipeline.",
+            "enum": ["escalate", "skip", "abort"]
           }
         }
       }
@@ -225,77 +654,106 @@
 
     "factoryExecutionPlan": {
       "type": "object",
+      "additionalProperties": false,
+      "required": ["steps", "maxRetries", "handoffRequired"],
+      "description": "Top-level execution instructions for the n8n factory orchestrator. Steps are human-readable. Use taskGraph for machine-executable granularity.",
       "properties": {
         "steps": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Numbered human-readable steps describing what the factory pipeline does end-to-end.",
+          "items": { "type": "string" }
         },
         "maxRetries": {
-          "type": "number"
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5,
+          "description": "Maximum retry attempts for the full generation loop before the factory produces a failed handoff package."
         },
         "handoffRequired": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Always true for LogiTruck. Factory output is never auto-merged — Claude Code always reviews."
+        },
+        "handoffPackage": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Contents of the handoff package delivered to Claude Code after factory execution.",
+          "properties": {
+            "includeGeneratedFiles": { "type": "boolean" },
+            "includeTestResults": { "type": "boolean" },
+            "includeValidationOutput": { "type": "boolean" },
+            "includeRiskNotes": { "type": "boolean" },
+            "includeClaudeCodeIntegrationSteps": { "type": "boolean" }
+          }
         }
       }
     },
 
-    "claudeCodeHandoff": {
+    "claudeCodeIntegrationPlan": {
       "type": "object",
+      "additionalProperties": false,
+      "description": "Steps Claude Code performs after receiving the factory handoff package. Claude Code owns all production integration, runtime validation, and commits. This section replaces the obsolete claudeCodeHandoff field.",
+      "required": ["required"],
       "properties": {
         "required": {
-          "type": "boolean"
+          "type": "boolean",
+          "description": "Always true for cloud-function-feature, mobile-screen-feature with escalateToL2+ triggers, maps-tracking-feature, and all payment/AI archetypes."
         },
         "reason": {
-          "type": "string"
+          "type": "string",
+          "description": "Specific escalation rule from archetype-registry.json that makes Claude Code integration required for this plan."
         },
-        "tasks": {
+        "steps": {
           "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "description": "Concrete review and integration steps Claude Code executes in order.",
+          "items": { "type": "string" }
+        },
+        "runtimeValidation": {
+          "type": "array",
+          "description": "Checks Claude Code performs after integration to verify runtime correctness (emulator calls, Firestore reads, etc.).",
+          "items": { "type": "string" }
+        },
+        "simulatorValidation": {
+          "type": "array",
+          "description": "Steps Claude Code performs on iOS/Android simulator or Expo Go to verify UI and navigation behavior.",
+          "items": { "type": "string" }
+        },
+        "finalCommitChecklist": {
+          "type": "array",
+          "description": "Gate conditions that must all be true before Claude Code commits the integrated output to the production repo.",
+          "items": { "type": "string" }
         }
       }
     },
 
-    "selectedBuildingBlocks": {
-      "description": "Building blocks explicitly selected for this plan. Merged with archetype defaults to produce resolvedBuildingBlocks. Only blocks physically present in factory/building-blocks/ are valid.",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["name", "required", "reason"],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "Exact filename without .md extension. Must exist in factory/building-blocks/."
-          },
-          "required": {
-            "type": "boolean",
-            "description": "true = always include; false = include only if in archetype optionalBuildingBlocks"
-          },
-          "reason": {
-            "type": "string",
-            "description": "Why this building block is needed for this specific feature."
-          }
+    "rollbackPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required"],
+      "description": "How to revert this feature if integration fails or a production issue is detected post-deploy.",
+      "properties": {
+        "required": {
+          "type": "boolean",
+          "description": "true = this feature has state side-effects (Auth users, Firestore writes, deployed functions) that require explicit reversal steps."
+        },
+        "steps": {
+          "type": "array",
+          "description": "Ordered rollback actions. Only include steps with real side-effects to reverse — do not list git revert as a standalone step.",
+          "items": { "type": "string" }
         }
-      }
-    },
-
-    "resolvedBuildingBlocks": {
-      "description": "Final deduplicated list of building blocks resolved by the factory. Computed as: dedupe(archetype.defaultBuildingBlocks ∪ selectedBuildingBlocks). Factory loads these .md files to build the context bundle for Haiku.",
-      "type": "array",
-      "items": {
-        "type": "string",
-        "description": "Building block name without .md extension."
       }
     },
 
     "acceptanceCriteria": {
       "type": "array",
-      "items": {
-        "type": "string"
-      }
+      "description": "Verifiable conditions that must all be true for this feature to be considered complete. Written as present-tense assertions. The factory validates these against test results; Claude Code validates them against runtime behavior.",
+      "items": { "type": "string" }
+    },
+
+    "openQuestions": {
+      "type": "array",
+      "description": "Unresolved ambiguities or assumptions that Claude Code or a human must answer before or during implementation. Blocking questions should prevent factory execution until resolved.",
+      "items": { "type": "string" }
     }
+
   }
 }
