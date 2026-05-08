@@ -188,6 +188,159 @@ Use mocked API clients.
 
 ---
 
+# Cloud Function Testing
+
+Cloud Function tests run in a plain Node.js Jest environment (`testEnvironment: 'node'`).
+They use CommonJS (`require`), no Babel transform, no TypeScript.
+
+## CRITICAL: Always mock firebase-functions/v2/https
+
+Do NOT import the real `firebase-functions` package in tests.
+The real package triggers an import chain through `firebase-admin` internals
+(`../utils/error`, etc.) that Jest intercepts incorrectly and breaks the test suite.
+
+Always add this mock at the top of every Cloud Function test file:
+
+```js
+jest.mock('firebase-functions/v2/https', () => ({
+  onCall: (handler) => handler,
+  HttpsError: class HttpsError extends Error {
+    constructor(code, message) {
+      super(message);
+      this.code = code;
+    }
+  },
+}));
+```
+
+Then require `HttpsError` from the mock, not from the real package:
+
+```js
+const { HttpsError } = require('firebase-functions/v2/https');
+```
+
+## Import depth for functions/__tests__
+
+Test files live at `functions/app/<module>/__tests__/`.
+Shared utilities live at `functions/core/` and `functions/utils/`.
+
+The correct relative import depth from `__tests__/` to `functions/core/` is **three levels up**:
+
+```js
+// CORRECT — from functions/app/<module>/__tests__/
+const { getUserByEmailSafe } = require('../../../core/user');
+
+// WRONG — only goes up to functions/app/, not functions/
+const { getUserByEmailSafe } = require('../../core/user');
+```
+
+## Required mocks for Cloud Function tests
+
+Every Cloud Function test must mock:
+
+- `firebase-admin` — provide `auth()` and `firestore()` stubs
+- `firebase-functions/v2/https` — inline HttpsError class (see above)
+- `uuid` — return deterministic ID for assertions
+- Any `functions/core/` dependency used by the function
+
+## firebase-admin mock — FieldValue is a static property
+
+`admin.firestore.FieldValue.serverTimestamp()` is a **static property on the `firestore` function**, not on its return value.
+The mock must attach `FieldValue` directly to the `firestoreFn` object:
+
+```js
+jest.mock('firebase-admin', () => {
+  const firestoreFn = jest.fn().mockReturnValue({
+    collection: jest.fn().mockReturnValue({
+      doc: jest.fn().mockReturnValue({
+        set: jest.fn().mockResolvedValue(undefined),
+        collection: jest.fn().mockReturnValue({
+          doc: jest.fn().mockReturnValue({
+            set: jest.fn().mockResolvedValue(undefined),
+          }),
+        }),
+      }),
+    }),
+  });
+  firestoreFn.FieldValue = {
+    serverTimestamp: jest.fn().mockReturnValue('TIMESTAMP'),
+  };
+  return {
+    auth: jest.fn().mockReturnValue({
+      createUser: jest.fn().mockResolvedValue({ uid: 'mock-uid' }),
+    }),
+    firestore: firestoreFn,
+  };
+});
+```
+
+WRONG (FieldValue inside return value — does NOT work):
+```js
+firestore: () => ({ FieldValue: { serverTimestamp: () => 'TIMESTAMP' }, ... })
+```
+
+## Always use mock-prefixed Jest methods
+
+Always use:
+- `jest.fn().mockReturnValue(x)` — NOT `.returnValue(x)`
+- `jest.fn().mockResolvedValue(x)` — NOT `.resolvedValue(x)`
+- `jest.fn().mockRejectedValue(e)` — NOT `.rejectedValue(e)`
+
+The non-prefixed versions (`.returnValue`, `.resolvedValue`) do not exist on jest.fn() and will throw `TypeError: jest.fn(...).returnValue is not a function`.
+
+## Mock modules that initialize Firebase Admin at import time
+
+Some internal modules call Firebase Admin APIs (`getFirestore()`, `getAuth()`, etc.) at
+**module load time** — meaning the moment they are `require()`-d, not inside a function call.
+If the mock for `firebase-admin` is not in place before those modules load, the test suite
+crashes with `Firebase Admin not initialized`.
+
+**Rule:** mock every `functions/core/` module (and any other internal that initializes Firebase
+at import time) BEFORE requiring the function under test.
+
+`functions/core/user.js` calls `getFirestore()` at the top level. Always mock it:
+
+```js
+jest.mock('../../../core/user', () => ({
+  getUserByEmailSafe: jest.fn(),
+}));
+```
+
+Order of statements in a Cloud Function test file:
+
+1. `jest.mock('firebase-functions/v2/https', ...)` — inline HttpsError
+2. `jest.mock('firebase-admin', ...)` — firestoreFn with FieldValue
+3. `jest.mock('uuid', ...)` — deterministic ID
+4. `jest.mock('../../../core/user', ...)` — prevents getFirestore() at import time
+5. `const { HttpsError } = require('firebase-functions/v2/https');`
+6. `const createXxx = require('../createXxx').createXxx;`
+7. `const admin = require('firebase-admin');`
+8. `const { helperFn } = require('../../../core/user');`
+
+All `jest.mock()` calls are hoisted by Jest before any `require()`, so order within
+the mock declarations does not matter — but listing them before the requires makes
+intent explicit and avoids confusion.
+
+---
+
+## Cloud Function jest config
+
+Use a dedicated `jest.functions.config.js` at repo root:
+
+```js
+module.exports = {
+  testEnvironment: 'node',
+  modulePaths: ['<rootDir>'],
+  testMatch: ['**/__tests__/**/*.test.js'],
+  transform: {},
+};
+```
+
+Do NOT add `moduleNameMapper` entries — they intercept node_modules internal
+relative imports and cause false resolution errors.
+
+---
+
 # Stripe / Payments Testing
 
 Factory may test:
