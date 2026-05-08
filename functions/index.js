@@ -37,6 +37,9 @@ exports.assignCarrierProjectJob         = assignCarrierProjectJob.assignCarrierP
 const vendorUser = require('./app/vendorUser/createVendorUser');
 exports.createVendorUser                = vendorUser.createVendorUser;
 
+const carrier = require('./app/carrier/createCarrier');
+exports.createCarrier                   = carrier.createCarrier;
+
 // ─── TRIGGERS — Chat ──────────────────────────────────────────────────────────
 exports.syncChatFeedStatusOnChannelUpdate = chat.syncChatFeedStatusOnChannelUpdate;
 exports.syncChatFeedStatusOnChannelCreate = chat.syncChatFeedStatusOnChannelCreate;
