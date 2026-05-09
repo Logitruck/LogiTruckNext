@@ -212,6 +212,46 @@ Avoid:
 
 ---
 
+# Registry Enforcement (MANDATORY)
+
+project-structure-registry.json is the source of truth for:
+
+- folder hierarchy
+- import paths
+- module boundaries
+- screen patterns
+- hook locations
+- allowed imports
+- forbidden imports
+
+The generator MUST NOT invent relative imports.
+
+Before generating any file:
+
+1. Determine the target file location
+2. Determine relative depth to src/
+3. Resolve imports using depthReference
+4. Validate imports against allowedImports/forbiddenImports
+
+If import resolution is uncertain:
+- stop generation
+- fail validation
+- do not hallucinate paths
+
+
+# Relative Import Rules
+
+This repository uses:
+- NO TypeScript aliases
+- NO babel module resolver
+- ONLY relative imports
+
+Never infer import paths manually.
+
+Always use:
+- depthReference
+- real examples from registry
+
 # State Management Rules
 
 Preferred:
@@ -291,13 +331,25 @@ Avoid:
 
 Factory may test:
 
-- rendering logic
-- loading states
-- empty states
 - reducers
+- pure hooks
 - callback behavior
-- navigation params
-- hook integration
+- validation logic
+- utility functions
+- deterministic state transitions
+
+Factory should avoid generating React Native component tests by default.
+
+Reason:
+- nested relative imports are highly unstable
+- mock hierarchies are project-specific
+- RN rendering tests generate noisy validation failures
+- UI tests are weak signals for architectural correctness
+
+Factory may generate RN component tests ONLY when:
+- explicitly requested in implementationPlan
+- a validated golden reference exists
+- the screen contains critical business logic
 
 Factory must NOT test:
 
@@ -308,7 +360,7 @@ Factory must NOT test:
 - unrelated repository tests
 - existing historical failing suites
 
-Use mocks/adapters.
+Use mocks/adapters only when deterministic and already established in project references.
 
 ## Generated Test Scope
 
