@@ -4,7 +4,9 @@
   "summary": "onCall Cloud Function that creates a carrier company (vendor doc) and provisions its first admin user. Creates vendors/{vendorID}, users/{uid}, and vendor_users/{vendorID}/users/{uid} atomically. Used to onboard new carrier companies onto the LogiTruck platform.",
   "businessIntent": {
     "problem": "Carrier companies must be provisioned server-side: the vendorID container must be created before any user can be associated to a company, and the admin user's auth account + Firestore profile must be created atomically to avoid orphaned accounts.",
-    "affectedRoles": ["carrier"],
+    "affectedRoles": [
+      "carrier"
+    ],
     "expectedOutcome": "Calling createCarrier produces a verified vendor doc at vendors/{vendorID}, a Firebase Auth account for the admin, and dual-written profile at users/{uid} + vendor_users/{vendorID}/users/{uid}. Returns vendorID and adminUID to the caller.",
     "operationalCriticality": "high"
   },
@@ -21,6 +23,7 @@
     }
   ],
   "resolvedBuildingBlocks": [
+    "cloud-function-feature",
     "callable-function-pattern",
     "callable-auth-pattern",
     "cloud-function-structure",
@@ -30,8 +33,12 @@
     "firestore-data-model-access"
   ],
   "repoContext": {
-    "projectsAffected": ["functions"],
-    "relevantModules": ["functions/app/vendorUser/createVendorUser.js"],
+    "projectsAffected": [
+      "functions"
+    ],
+    "relevantModules": [
+      "functions/app/vendorUser/createVendorUser.js"
+    ],
     "referenceFiles": [
       "functions/app/vendorUser/createVendorUser.js",
       "functions/app/jobs/assignCarrierProjectJob.js",
@@ -51,6 +58,21 @@
       "Calling admin.initializeApp() inside the function file"
     ]
   },
+  "automationScope": {
+    "factorySandboxOnly": true,
+    "factoryCanGenerate": [
+      "functions/app/carrier/createCarrier.js",
+      "functions/app/carrier/__tests__/createCarrier.test.js"
+    ],
+    "factoryCanValidate": [
+      "jest"
+    ],
+    "claudeCodeMustIntegrate": true,
+    "claudeCodeOnly": [
+      "functions/index.js"
+    ],
+    "humanApprovalRequired": []
+  },
   "architectureImpact": {
     "riskLevel": "high",
     "nativeRisk": false,
@@ -66,25 +88,40 @@
   "dataModelsTouched": [
     {
       "collection": "vendors",
-      "operations": ["create"],
+      "operations": [
+        "create"
+      ],
       "notes": "Primary write — creates the vendor company doc. vendorID = uuid(). Fields: vendorID, name, searchKeywords, serviceCategoryIDs, status, createdBy, createdAt, updatedAt"
     },
     {
       "collection": "users",
-      "operations": ["write"],
+      "operations": [
+        "write"
+      ],
       "notes": "Admin user global profile. merge:true to handle existing accounts. Fields: id, email, firstName, lastName, vendorID, role, rolesArray, createdAt"
     },
     {
       "collection": "vendor_users",
       "subcollection": "users",
-      "operations": ["write"],
+      "operations": [
+        "write"
+      ],
       "notes": "Admin user scoped to vendor. path: vendor_users/{vendorID}/users/{uid}. Mirror of users/{uid} for vendor-scoped queries. merge:true"
     }
   ],
-  "projectAreasTouched": ["functions/app/", "functions/index.js"],
+  "projectAreasTouched": [
+    "functions/app/",
+    "functions/index.js"
+  ],
   "runtimeDependencies": {
-    "npmPackages": ["uuid"],
-    "firebaseServices": ["firestore", "auth", "functions"],
+    "npmPackages": [
+      "uuid"
+    ],
+    "firebaseServices": [
+      "firestore",
+      "auth",
+      "functions"
+    ],
     "externalAPIs": [],
     "environmentVariables": []
   },
@@ -123,14 +160,22 @@
         "filePath": "functions/app/carrier/createCarrier.js",
         "project": "functions",
         "description": "onCall function: validates auth + inputs, creates vendor doc, provisions admin user via Firebase Auth, dual-writes user profile to users/ and vendor_users/",
-        "buildingBlocks": ["callable-function-pattern", "callable-auth-pattern", "cloud-function-structure", "idempotent-event-processing", "firestore-data-model-access"],
+        "buildingBlocks": [
+          "callable-function-pattern",
+          "callable-auth-pattern",
+          "cloud-function-structure",
+          "idempotent-event-processing",
+          "firestore-data-model-access"
+        ],
         "risk": "high"
       },
       {
         "filePath": "functions/app/carrier/__tests__/createCarrier.test.js",
         "project": "functions",
         "description": "Jest tests: unauthenticated call, missing fields, duplicate email (idempotency), successful creation verifying all 3 Firestore writes",
-        "buildingBlocks": ["testing-guide"],
+        "buildingBlocks": [
+          "testing-guide"
+        ],
         "risk": "low"
       }
     ],
@@ -139,7 +184,9 @@
         "filePath": "functions/index.js",
         "project": "functions",
         "reason": "Register createCarrier export at the INSERT_FIREBASE_FUNCTION marker",
-        "buildingBlocks": ["cloud-function-structure"],
+        "buildingBlocks": [
+          "cloud-function-structure"
+        ],
         "risk": "low"
       }
     ],
@@ -164,13 +211,13 @@
       "Integration tests that require the Firebase emulator"
     ],
     "commands": [
-      "cd functions && npx jest app/carrier/__tests__/createCarrier.test.js --no-coverage"
+      "node_modules/.bin/jest functions/app/carrier/__tests__/createCarrier.test.js --watchAll=false --forceExit --roots functions"
     ]
   },
   "validationStrategy": {
     "sandboxCommands": [
-      "cd functions && npx jest app/carrier/__tests__/createCarrier.test.js",
-      "cd functions && node -e \"require('./app/carrier/createCarrier.js')\" 2>&1"
+      "node_modules/.bin/jest functions/app/carrier/__tests__/createCarrier.test.js --watchAll=false --forceExit --roots functions",
+      "node -e \"require('./functions/app/carrier/createCarrier.js')\" 2>&1"
     ],
     "expectedPassingSignals": [
       "All 4 test cases pass (unauthenticated, invalid-argument, idempotent email, successful creation)",

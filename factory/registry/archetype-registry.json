@@ -39,7 +39,6 @@
       },
       "notes": "Ideal entry point for factory validation. Pure, isolated, deterministic. No Firebase, no React, no network calls."
     },
-
     "mobile-screen-feature": {
       "description": "React Native screens across Carrier, Driver, and Finder roles. Hook-driven architecture with loading/empty/error states and navigation params.",
       "defaultBuildingBlocks": [
@@ -84,7 +83,6 @@
       },
       "notes": "Screen files must never contain Firestore calls directly. All data comes through hooks. Navigation changes to existing tab/drawer roots require Claude Code review."
     },
-
     "firestore-feature": {
       "description": "Firestore hooks, realtime listeners, collection queries, document sync, role-based data access patterns.",
       "defaultBuildingBlocks": [
@@ -132,10 +130,10 @@
       },
       "notes": "All async-lookup-before-subscribe patterns MUST use the ref+cancelled pattern from async-lookup-then-subscribe.md. Never use .then() chains that discard the unsubscribe return."
     },
-
     "cloud-function-feature": {
       "description": "Firebase Cloud Functions v2: callable functions, HTTP endpoints, Firestore triggers, scheduled jobs, background orchestration.",
       "defaultBuildingBlocks": [
+        "cloud-function-feature",
         "callable-function-pattern",
         "callable-auth-pattern",
         "cloud-function-structure",
@@ -186,7 +184,6 @@
       },
       "notes": "Every onCall function MUST have auth check as the first statement using request.auth?.uid. Never use data.auth (v1 pattern). All errors must use HttpsError not plain Error. Export must be added to functions/index.js."
     },
-
     "maps-tracking-feature": {
       "description": "Realtime driver tracking, route rendering, ETA calculations, polyline parsing, location sync, trip progression state machine.",
       "defaultBuildingBlocks": [
@@ -237,7 +234,6 @@
       },
       "notes": "Factory scope is limited to pure JS tracking logic. Any native map SDK, background location, or Expo plugin changes require Claude Code escalation. HomeTrackingScreen and Driver navigation root are protected."
     },
-
     "native-integration-feature": {
       "description": "Native SDK installation planning, Expo plugin impact analysis, iOS/Android config planning, background services, push native setup, voice/audio native integrations.",
       "defaultBuildingBlocks": [
@@ -276,7 +272,6 @@
       },
       "notes": "This archetype produces a handoff package only. The factory generates plans, risk checklists, TypeScript service drafts, and mock layers. Claude Code owns all native integration, build validation, and production commit."
     },
-
     "payments-stripe-connect-feature": {
       "description": "Stripe Connect onboarding, carrier payouts, payment intents, webhook processing, transaction tracking, escrow-like operational payment flows.",
       "defaultBuildingBlocks": [
@@ -325,7 +320,6 @@
       },
       "notes": "CRITICAL: stripeconnect.js currently has a v1 onCall auth vulnerability (data.auth instead of request.auth). Factory always uses request.auth?.uid. Idempotency guards required on all Stripe account creation. Webhook handler for account.updated is always required alongside createStripeAccount."
     },
-
     "ai-support-agent-feature": {
       "description": "AI-powered support and operational assistant features: chat UI, session orchestration, prompt templates, Firebase session persistence, escalation flows.",
       "defaultBuildingBlocks": [
@@ -379,7 +373,6 @@
       },
       "notes": "AI support agents are assistants, not autonomous operators. Every AI flow must define an escalation path. Turn storage MUST use Firestore subcollections, not array fields. Polling loops (while status !== completed) are forbidden — use createAndPoll with timeoutSeconds:120."
     },
-
     "voice-agent-elevenlabs-feature": {
       "description": "Realtime voice agent experiences: AI voice onboarding, investor/driver/dispatch voice assistants, embedded landing voice agents, session orchestration.",
       "defaultBuildingBlocks": [
@@ -430,7 +423,6 @@
       },
       "notes": "Voice session storage MUST use Firestore subcollection turns, not array fields. Context documents must have status gate (status === approved). Driver voice features must minimize distraction and avoid requiring visual interaction while driving."
     },
-
     "landing-react-vite-feature": {
       "description": "React/Vite web landing projects: investor landings, shipper landings, lead capture pages, AI voice landing experiences, conversion funnels.",
       "defaultBuildingBlocks": [
