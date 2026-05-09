@@ -1,110 +1,120 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
-const admin = require('firebase-admin');
+const { getAuth } = require('firebase-admin/auth');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { v4: uuidv4 } = require('uuid');
 const { getUserByEmailSafe } = require('../../core/user');
 
-const db = admin.firestore();
+const db = getFirestore();
+const auth = getAuth();
 
 exports.createCarrier = onCall(async (request) => {
-  // 1. Auth check — first statement
-  const authUID = request.auth?.uid;
-  if (!authUID) {
-    throw new HttpsError('unauthenticated', 'User must be authenticated');
-  }
-
-  // 2. Input validation
-  const { companyName, adminEmail, adminFirstName, adminLastName } = request.data;
-
-  if (!companyName) {
-    throw new HttpsError('invalid-argument', 'companyName is required');
-  }
-  if (!adminEmail) {
-    throw new HttpsError('invalid-argument', 'adminEmail is required');
-  }
-  if (!adminFirstName) {
-    throw new HttpsError('invalid-argument', 'adminFirstName is required');
-  }
-
   try {
+    // 1. Auth check — first statement
+    const authUID = request.auth?.uid;
+    if (!authUID) {
+      throw new HttpsError('unauthenticated', 'User must be authenticated');
+    }
+
+    // 2. Input validation
+    const { companyName, adminEmail, adminFirstName, adminLastName = '' } =
+      request.data || {};
+
+    if (!companyName) {
+      throw new HttpsError('invalid-argument', 'companyName is required');
+    }
+
+    if (!adminEmail) {
+      throw new HttpsError('invalid-argument', 'adminEmail is required');
+    }
+
+    if (!adminFirstName) {
+      throw new HttpsError('invalid-argument', 'adminFirstName is required');
+    }
+
+    const cleanCompanyName = String(companyName).trim();
+    const cleanAdminEmail = String(adminEmail).trim().toLowerCase();
+    const cleanAdminFirstName = String(adminFirstName).trim();
+    const cleanAdminLastName = String(adminLastName).trim();
+
     // 3. Generate vendorID
     const vendorID = uuidv4();
 
     // 4. Write vendors/{vendorID}
-    await db.collection('vendors').doc(vendorID).set({
+    const vendorRef = db.collection('vendors').doc(vendorID);
+    await vendorRef.set({
       vendorID,
-      name: companyName,
-      searchKeywords: [companyName.toLowerCase()],
+      name: cleanCompanyName,
+      searchKeywords: [cleanCompanyName.toLowerCase()],
       serviceCategoryIDs: [],
       status: 'active',
       createdBy: authUID,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     });
 
-    // 5. Check if user exists via email (idempotency guard)
-    let adminUID;
-    const existingUser = await getUserByEmailSafe(adminEmail);
+    // 5. Check for existing user by email (idempotency)
+    let authUser = await getUserByEmailSafe(cleanAdminEmail);
 
-    if (existingUser) {
-      // Reuse existing Firebase Auth user
-      adminUID = existingUser.uid;
-    } else {
-      // 6. Create new Firebase Auth user
-      const displayName = adminLastName
-        ? `${adminFirstName} ${adminLastName}`
-        : adminFirstName;
-
-      const newUser = await admin.auth().createUser({
-        email: adminEmail,
+    // 6. Create Firebase Auth user if new
+    if (!authUser) {
+      const displayName = `${cleanAdminFirstName} ${cleanAdminLastName}`.trim();
+      authUser = await auth.createUser({
+        email: cleanAdminEmail,
         displayName,
       });
-      adminUID = newUser.uid;
     }
 
-    // 7. Write users/{uid} with merge:true
-    await db.collection('users').doc(adminUID).set(
+    const uid = authUser.uid;
+
+    // 7. Write users/{uid}
+    const userRef = db.collection('users').doc(uid);
+    await userRef.set(
       {
-        id: adminUID,
-        email: adminEmail,
-        firstName: adminFirstName,
-        lastName: adminLastName || '',
+        id: uid,
+        email: cleanAdminEmail,
+        firstName: cleanAdminFirstName,
+        lastName: cleanAdminLastName,
         vendorID,
         role: 'carrier',
         rolesArray: ['carrier'],
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       },
-      { merge: true }
+      { merge: true },
     );
 
-    // 8. Write vendor_users/{vendorID}/users/{uid} with merge:true
-    await db
+    // 8. Write vendor_users/{vendorID}/users/{uid}
+    const vendorUserRef = db
       .collection('vendor_users')
       .doc(vendorID)
       .collection('users')
-      .doc(adminUID)
-      .set(
-        {
-          id: adminUID,
-          email: adminEmail,
-          firstName: adminFirstName,
-          lastName: adminLastName || '',
-          role: 'carrier',
-          rolesArray: ['carrier'],
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+      .doc(uid);
+    await vendorUserRef.set(
+      {
+        id: uid,
+        email: cleanAdminEmail,
+        firstName: cleanAdminFirstName,
+        lastName: cleanAdminLastName,
+        vendorID,
+        role: 'carrier',
+        rolesArray: ['carrier'],
+        createdAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
 
-    // 9. Return result
+    // 9. Return success
     return {
       success: true,
       vendorID,
-      adminUID,
+      adminUID: uid,
     };
   } catch (error) {
     if (error instanceof HttpsError) {
       throw error;
     }
-    throw new HttpsError('internal', `Failed to create carrier: ${error.message}`);
+    throw new HttpsError(
+      'internal',
+      error?.message || 'Failed to create carrier',
+    );
   }
 });
