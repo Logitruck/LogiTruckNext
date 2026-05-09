@@ -1,0 +1,209 @@
+{
+  "featureName": "useCreateLocation",
+  "featureArchetype": "firestore-feature",
+  "summary": "Write hook that creates a new service location (sede) for a vendor in vendor_locations/{vendorID}/locations/{locationID}. Follows the same direct-Firestore pattern as useCreateCarrierVehicle. The double-nested location schema (location.location.lat/lng) is required for compatibility with the onRequestCreated distribution trigger.",
+  "businessIntent": {
+    "problem": "Carrier admins need to register service locations so the distribution trigger (onRequestCreated) can match incoming freight requests to carriers operating in that geographic zone. Without at least one location, the vendor receives no requests.",
+    "affectedRoles": ["carrier"],
+    "expectedOutcome": "Calling createLocation writes a document to vendor_locations/{vendorID}/locations/ with the correct nested schema and returns the created location object including the generated locationID.",
+    "operationalCriticality": "high"
+  },
+  "selectedBuildingBlocks": [
+    {
+      "name": "hook-service-pattern",
+      "reason": "Write hook — async function, input validation, try/catch, returns created object. Same pattern as useCreateCarrierVehicle.",
+      "required": true
+    }
+  ],
+  "resolvedBuildingBlocks": [
+    "hook-service-pattern",
+    "realtime-firestore-listener",
+    "loading-empty-error-state",
+    "testing-guide",
+    "project-structure-imports"
+  ],
+  "repoContext": {
+    "projectsAffected": ["src"],
+    "relevantModules": [
+      "src/modules/projects/hooks/carrier/useCreateCarrierVehicle.ts"
+    ],
+    "referenceFiles": [
+      "src/modules/projects/hooks/carrier/useCreateCarrierVehicle.ts"
+    ],
+    "existingPatternsToFollow": [
+      "Direct Firestore write — no httpsCallable, same pattern as useCreateCarrierVehicle",
+      "Generate doc ref with doc(collection(db, 'vendor_locations', vendorID, 'locations'))",
+      "Trim and validate all string inputs before writing",
+      "Return the created object with the generated locationID",
+      "ESM imports: { doc, setDoc, serverTimestamp, collection } from firebase/firestore"
+    ],
+    "knownAntiPatternsToAvoid": [
+      "Do not use httpsCallable — this is a direct client-side Firestore write",
+      "CRITICAL: location field must be double-nested: location: { location: { lat, lng } } — onRequestCreated reads locData.location.location.lat/lng",
+      "Do not flatten to location: { lat, lng } — the trigger will silently skip this vendor",
+      "Do not skip maxDistanceService — the trigger uses it for haversine distance check",
+      "Collection is vendor_locations (plural with S) — never vendor_location"
+    ]
+  },
+  "architectureImpact": {
+    "riskLevel": "medium",
+    "nativeRisk": false,
+    "touchesFirebase": true,
+    "touchesNavigation": false,
+    "touchesCloudFunctions": false,
+    "touchesPayments": false,
+    "touchesAI": false,
+    "touchesLanding": false,
+    "requiresHumanApproval": false,
+    "notes": "The double-nested location schema is operationally critical — incorrect nesting silently breaks request distribution."
+  },
+  "automationScope": {
+    "factorySandboxOnly": true,
+    "factoryCanGenerate": [
+      "src/carrier/hooks/useCreateLocation.ts",
+      "src/carrier/hooks/__tests__/useCreateLocation.test.ts"
+    ],
+    "factoryCanValidate": ["jest", "tsc"],
+    "claudeCodeMustIntegrate": true,
+    "claudeCodeOnly": [],
+    "humanApprovalRequired": []
+  },
+  "files": {
+    "create": [
+      {
+        "filePath": "src/carrier/hooks/useCreateLocation.ts",
+        "project": "src",
+        "description": "Write hook that creates vendor_locations/{vendorID}/locations/{locationID} with double-nested location schema. Returns { createLocation } async function.",
+        "buildingBlocks": ["hook-service-pattern", "project-structure-imports"],
+        "risk": "medium"
+      },
+      {
+        "filePath": "src/carrier/hooks/__tests__/useCreateLocation.test.ts",
+        "project": "src",
+        "description": "Jest tests: throws when vendorID missing, throws when lat/lng missing, throws when maxDistanceService missing, successful write uses double-nested schema, returns locationID.",
+        "buildingBlocks": ["testing-guide"],
+        "risk": "low"
+      }
+    ],
+    "modify": [],
+    "doNotTouch": [
+      "src/modules/projects/hooks/carrier/useCreateCarrierVehicle.ts",
+      "functions/triggers/distributeRequest/distributeRequest.js",
+      "functions/",
+      "src/navigation/"
+    ]
+  },
+  "hookSpec": {
+    "hookName": "useCreateLocation",
+    "returnShape": "{ createLocation: (params: CreateLocationParams) => Promise<LocationResult> }",
+    "firestorePaths": ["vendor_locations/{vendorID}/locations/{locationID}"],
+    "listenerType": "getDocs",
+    "vendorIDRequired": false,
+    "asyncLookupRequired": false,
+    "cleanupRequired": false
+  },
+  "dataModelsTouched": [
+    {
+      "collection": "vendor_locations",
+      "subcollection": "locations",
+      "operations": ["create"],
+      "notes": "Path: vendor_locations/{vendorID}/locations/{locationID}. Required schema: { locationID, vendorID, name, address, location: { location: { lat, lng } }, maxDistanceService, status: 'active', createdAt, updatedAt }. Double-nested location is critical for onRequestCreated compatibility."
+    }
+  ],
+  "projectAreasTouched": [
+    "src/carrier/hooks/",
+    "src/carrier/hooks/__tests__/"
+  ],
+  "runtimeDependencies": {
+    "npmPackages": [],
+    "firebaseServices": ["firestore"],
+    "externalAPIs": [],
+    "environmentVariables": []
+  },
+  "moduleSystem": "TypeScript",
+  "testingStrategy": {
+    "testFirst": true,
+    "testType": "firestore-hook",
+    "requiredMocks": [
+      "firebase/firestore (doc, setDoc, serverTimestamp, collection)",
+      "src/core/firebase/config (db)"
+    ],
+    "avoid": [
+      "Real Firestore calls in tests",
+      "import from @testing-library/react-hooks (deprecated)"
+    ],
+    "commands": [
+      "npx jest src/carrier/hooks/__tests__/useCreateLocation.test.ts --watchAll=false --forceExit"
+    ]
+  },
+  "validationStrategy": {
+    "sandboxCommands": [
+      "npx jest src/carrier/hooks/__tests__/useCreateLocation.test.ts --watchAll=false --forceExit",
+      "npx tsc --noEmit"
+    ],
+    "expectedPassingSignals": [
+      "All 5 test cases pass",
+      "No TypeScript errors",
+      "Written document has location.location.lat and location.location.lng (verify in setDoc mock args)"
+    ],
+    "failureEscalationRules": [
+      "If setDoc mock fails: reload testing-guide building block and verify mock import paths",
+      "If location schema is flat instead of double-nested: reload the plan knownAntiPatternsToAvoid and regenerate"
+    ]
+  },
+  "factoryExecutionPlan": {
+    "steps": [
+      "Generate useCreateLocation.ts following hook-service-pattern + useCreateCarrierVehicle reference",
+      "CRITICAL: verify generated code uses location: { location: { lat, lng } } double-nested shape",
+      "Generate useCreateLocation.test.ts with 5 test cases including schema validation assertion",
+      "Validate: jest run + tsc --noEmit",
+      "Produce handoff package for Claude Code integration"
+    ],
+    "maxRetries": 2,
+    "handoffRequired": true,
+    "handoffPackage": {
+      "includeGeneratedFiles": true,
+      "includeTestResults": true,
+      "includeValidationOutput": true,
+      "includeRiskNotes": true,
+      "includeClaudeCodeIntegrationSteps": true
+    }
+  },
+  "claudeCodeIntegrationPlan": {
+    "required": true,
+    "reason": "Factory output is an integration candidate only — Claude Code must verify the double-nested location schema before committing.",
+    "steps": [
+      "Copy src/carrier/hooks/useCreateLocation.ts into the repo",
+      "Copy src/carrier/hooks/__tests__/useCreateLocation.test.ts into the repo",
+      "Verify useCreateLocation.ts writes location: { location: { lat, lng } } — grep or read the file",
+      "Run: npx jest src/carrier/hooks/__tests__/useCreateLocation.test.ts --watchAll=false --forceExit",
+      "Run: npx tsc --noEmit"
+    ],
+    "runtimeValidation": [],
+    "simulatorValidation": [],
+    "finalCommitChecklist": [
+      "useCreateLocation.ts added to src/carrier/hooks/",
+      "useCreateLocation.test.ts added to src/carrier/hooks/__tests__/",
+      "location field is double-nested: location: { location: { lat, lng } }",
+      "All jest tests pass",
+      "No TypeScript errors"
+    ]
+  },
+  "rollbackPlan": {
+    "required": false,
+    "steps": [
+      "Remove src/carrier/hooks/useCreateLocation.ts",
+      "Remove src/carrier/hooks/__tests__/useCreateLocation.test.ts"
+    ]
+  },
+  "acceptanceCriteria": [
+    "createLocation() throws if vendorID is missing",
+    "createLocation() throws if lat or lng is missing",
+    "createLocation() throws if maxDistanceService is missing",
+    "Written document has location.location.lat and location.location.lng (double-nested — matches onRequestCreated)",
+    "Written document has maxDistanceService as a number",
+    "Returns object including locationID",
+    "All 5 jest test cases pass"
+  ],
+  "openQuestions": []
+}

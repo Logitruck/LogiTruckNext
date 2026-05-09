@@ -1,0 +1,214 @@
+{
+  "featureName": "useVendorLocations",
+  "featureArchetype": "firestore-feature",
+  "summary": "Realtime Firestore listener hook that subscribes to vendor_locations/{vendorID}/locations and returns the list of service locations (sedes). Used by WizardStepLocations to display existing coverage zones and track step completion (>= 1 location).",
+  "businessIntent": {
+    "problem": "The locations wizard step needs to display existing service locations in realtime so the carrier admin can see registered zones and know the step is complete.",
+    "affectedRoles": ["carrier"],
+    "expectedOutcome": "Hook subscribes to vendor_locations/{vendorID}/locations and returns { locations, loading, error }. Cleanup on unmount is guaranteed.",
+    "operationalCriticality": "medium"
+  },
+  "selectedBuildingBlocks": [
+    {
+      "name": "realtime-firestore-listener",
+      "reason": "Hook uses onSnapshot on vendor_locations subcollection — requires listener cleanup pattern",
+      "required": true
+    },
+    {
+      "name": "hook-service-pattern",
+      "reason": "Standard { data, loading, error } return contract used across all carrier hooks",
+      "required": true
+    },
+    {
+      "name": "loading-empty-error-state",
+      "reason": "Must handle loading:true initially, empty array when no locations, and Firestore error state",
+      "required": true
+    }
+  ],
+  "resolvedBuildingBlocks": [
+    "hook-service-pattern",
+    "realtime-firestore-listener",
+    "loading-empty-error-state",
+    "testing-guide",
+    "project-structure-imports"
+  ],
+  "repoContext": {
+    "projectsAffected": ["src"],
+    "relevantModules": [
+      "src/carrier/hooks/useVendorRequestsList.ts"
+    ],
+    "referenceFiles": [
+      "src/carrier/hooks/useVendorRequestsList.ts"
+    ],
+    "existingPatternsToFollow": [
+      "collection(db, 'vendor_locations', vendorID, 'locations') for the subcollection path",
+      "onSnapshot returns unsubscribe — return it from useEffect cleanup",
+      "Map snapshot.docs to { id: doc.id, ...doc.data() }",
+      "setLoading(false) in both onSnapshot callback and error callback",
+      "ESM imports: firebase/firestore and src/core/firebase/config",
+      "IMPORT DEPTH FOR HOOK FILE (src/carrier/hooks/useVendorLocations.ts): use '../../core/firebase/config' and '../../core/onboarding/hooks/useAuth'",
+      "IMPORT DEPTH FOR TEST FILE (src/carrier/hooks/__tests__/useVendorLocations.test.ts): use '../../../core/firebase/config' and '../../../core/onboarding/hooks/useAuth' — the __tests__ subfolder adds one extra level"
+    ],
+    "knownAntiPatternsToAvoid": [
+      "Collection is vendor_locations (plural with S) — never vendor_location",
+      "Do not query the parent vendor_locations/{vendorID} doc — locations live in the subcollection",
+      "Do not flatten the nested location field — preserve location.location.lat/lng shape as stored",
+      "Do not use getDocs — this must be a realtime onSnapshot listener",
+      "TEST IMPORT PATH: never use '../../core/firebase/config' in the test file — tests live in __tests__/ so the path must be '../../../core/firebase/config' (3 levels up)"
+    ]
+  },
+  "architectureImpact": {
+    "riskLevel": "medium",
+    "nativeRisk": false,
+    "touchesFirebase": true,
+    "touchesNavigation": false,
+    "touchesCloudFunctions": false,
+    "touchesPayments": false,
+    "touchesAI": false,
+    "touchesLanding": false,
+    "requiresHumanApproval": false
+  },
+  "automationScope": {
+    "factorySandboxOnly": true,
+    "factoryCanGenerate": [
+      "src/carrier/hooks/useVendorLocations.ts",
+      "src/carrier/hooks/__tests__/useVendorLocations.test.ts"
+    ],
+    "factoryCanValidate": ["jest", "tsc"],
+    "claudeCodeMustIntegrate": true,
+    "claudeCodeOnly": [],
+    "humanApprovalRequired": []
+  },
+  "files": {
+    "create": [
+      {
+        "filePath": "src/carrier/hooks/useVendorLocations.ts",
+        "project": "src",
+        "description": "Realtime onSnapshot hook for vendor_locations/{vendorID}/locations. Returns { locations, loading, error } and cleans up listener on unmount.",
+        "buildingBlocks": ["hook-service-pattern", "realtime-firestore-listener", "loading-empty-error-state", "project-structure-imports"],
+        "risk": "medium"
+      },
+      {
+        "filePath": "src/carrier/hooks/__tests__/useVendorLocations.test.ts",
+        "project": "src",
+        "description": "Jest tests: loading:true initially, locations populated from snapshot, empty array on empty collection, unsubscribe called on unmount.",
+        "buildingBlocks": ["testing-guide"],
+        "risk": "low"
+      }
+    ],
+    "modify": [],
+    "doNotTouch": [
+      "src/carrier/hooks/useVendorRequestsList.ts",
+      "functions/",
+      "src/navigation/"
+    ]
+  },
+  "hookSpec": {
+    "hookName": "useVendorLocations",
+    "returnShape": "{ locations: any[], loading: boolean, error: Error | null }",
+    "firestorePaths": ["vendor_locations/{vendorID}/locations"],
+    "listenerType": "onSnapshot",
+    "vendorIDRequired": false,
+    "asyncLookupRequired": false,
+    "cleanupRequired": true
+  },
+  "dataModelsTouched": [
+    {
+      "collection": "vendor_locations",
+      "subcollection": "locations",
+      "operations": ["listen"],
+      "notes": "Path: vendor_locations/{vendorID}/locations. Key fields: locationID, vendorID, name, address, location.location.lat, location.location.lng, maxDistanceService, status."
+    }
+  ],
+  "projectAreasTouched": [
+    "src/carrier/hooks/",
+    "src/carrier/hooks/__tests__/"
+  ],
+  "runtimeDependencies": {
+    "npmPackages": [],
+    "firebaseServices": ["firestore"],
+    "externalAPIs": [],
+    "environmentVariables": []
+  },
+  "moduleSystem": "TypeScript",
+  "testingStrategy": {
+    "testFirst": true,
+    "testType": "firestore-hook",
+    "requiredMocks": [
+      "firebase/firestore (collection, onSnapshot)",
+      "src/core/firebase/config (db)"
+    ],
+    "avoid": [
+      "Real Firestore calls in tests",
+      "import from @testing-library/react-hooks (deprecated)"
+    ],
+    "commands": [
+      "npx jest src/carrier/hooks/__tests__/useVendorLocations.test.ts --watchAll=false --forceExit"
+    ]
+  },
+  "validationStrategy": {
+    "sandboxCommands": [
+      "npx jest src/carrier/hooks/__tests__/useVendorLocations.test.ts --watchAll=false --forceExit",
+      "npx tsc --noEmit"
+    ],
+    "expectedPassingSignals": [
+      "All 4 test cases pass",
+      "No TypeScript errors"
+    ],
+    "failureEscalationRules": [
+      "If onSnapshot mock fails: reload realtime-firestore-listener building block and regenerate test",
+      "If import path fails: reload project-structure-imports and verify src/core/firebase/config path"
+    ]
+  },
+  "factoryExecutionPlan": {
+    "steps": [
+      "Generate useVendorLocations.ts following realtime-firestore-listener + hook-service-pattern",
+      "Generate useVendorLocations.test.ts with 4 test cases",
+      "Validate: jest run + tsc --noEmit",
+      "Produce handoff package for Claude Code integration"
+    ],
+    "maxRetries": 2,
+    "handoffRequired": true,
+    "handoffPackage": {
+      "includeGeneratedFiles": true,
+      "includeTestResults": true,
+      "includeValidationOutput": true,
+      "includeRiskNotes": true,
+      "includeClaudeCodeIntegrationSteps": true
+    }
+  },
+  "claudeCodeIntegrationPlan": {
+    "required": true,
+    "reason": "Factory output is an integration candidate only — Claude Code copies files into production repo and validates.",
+    "steps": [
+      "Copy src/carrier/hooks/useVendorLocations.ts into the repo",
+      "Copy src/carrier/hooks/__tests__/useVendorLocations.test.ts into the repo",
+      "Run: npx jest src/carrier/hooks/__tests__/useVendorLocations.test.ts --watchAll=false --forceExit",
+      "Run: npx tsc --noEmit"
+    ],
+    "runtimeValidation": [],
+    "simulatorValidation": [],
+    "finalCommitChecklist": [
+      "useVendorLocations.ts added to src/carrier/hooks/",
+      "useVendorLocations.test.ts added to src/carrier/hooks/__tests__/",
+      "All jest tests pass",
+      "No TypeScript errors"
+    ]
+  },
+  "rollbackPlan": {
+    "required": false,
+    "steps": [
+      "Remove src/carrier/hooks/useVendorLocations.ts",
+      "Remove src/carrier/hooks/__tests__/useVendorLocations.test.ts"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Hook subscribes to vendor_locations/{vendorID}/locations via onSnapshot",
+    "Returns { locations, loading, error }",
+    "loading is true on initial render, false after first snapshot",
+    "locations is an empty array when the collection has no documents",
+    "Unsubscribe is called on unmount",
+    "All 4 jest test cases pass"
+  ],
+  "openQuestions": []
+}

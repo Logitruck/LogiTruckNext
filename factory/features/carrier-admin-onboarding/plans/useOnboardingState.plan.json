@@ -1,0 +1,208 @@
+{
+  "featureName": "useOnboardingState",
+  "featureArchetype": "firestore-feature",
+  "summary": "Realtime Firestore listener hook that subscribes to vendors/{vendorID} and exposes the onboarding completion state for the carrier admin wizard. Returns the onboarding object (isComplete, steps, completedAt) and a markStepComplete() helper that writes back to the same document.",
+  "businessIntent": {
+    "problem": "The wizard needs to know which steps have been completed and whether onboarding is fully done, so it can show per-tab progress indicators and transition from setup mode to management mode.",
+    "affectedRoles": ["carrier"],
+    "expectedOutcome": "Hook subscribes to vendors/{vendorID} and returns { onboarding, loading, error }. markStepComplete(stepKey) writes vendors/{vendorID} with updateDoc, marking the step boolean as true.",
+    "operationalCriticality": "medium"
+  },
+  "selectedBuildingBlocks": [
+    {
+      "name": "realtime-firestore-listener",
+      "reason": "Subscribes to vendors/{vendorID} doc via onSnapshot to reflect step completion in realtime",
+      "required": true
+    },
+    {
+      "name": "hook-service-pattern",
+      "reason": "Standard { data, loading, error } hook contract and markStepComplete async helper",
+      "required": true
+    },
+    {
+      "name": "loading-empty-error-state",
+      "reason": "Must handle loading, missing onboarding field (default to empty state), and Firestore errors",
+      "required": true
+    }
+  ],
+  "resolvedBuildingBlocks": [
+    "hook-service-pattern",
+    "realtime-firestore-listener",
+    "loading-empty-error-state",
+    "testing-guide",
+    "project-structure-imports"
+  ],
+  "repoContext": {
+    "projectsAffected": ["src"],
+    "relevantModules": [
+      "src/carrier/hooks/useVendorRequestsList.ts"
+    ],
+    "referenceFiles": [
+      "src/carrier/hooks/useVendorRequestsList.ts"
+    ],
+    "existingPatternsToFollow": [
+      "doc(db, 'vendors', vendorID) for the document path",
+      "onSnapshot on a single document ref — return unsubscribe from useEffect",
+      "Extract the onboarding field from doc.data() — default to null if missing",
+      "markStepComplete uses updateDoc with dot-notation field path: 'onboarding.steps.{stepKey}': true",
+      "ESM imports: firebase/firestore and src/core/firebase/config"
+    ],
+    "knownAntiPatternsToAvoid": [
+      "Do not use a subcollection — onboarding is a field inside vendors/{vendorID}, not a separate collection",
+      "Do not forget to return unsubscribe from useEffect",
+      "markStepComplete must use updateDoc (merge), not setDoc (overwrite)"
+    ]
+  },
+  "architectureImpact": {
+    "riskLevel": "medium",
+    "nativeRisk": false,
+    "touchesFirebase": true,
+    "touchesNavigation": false,
+    "touchesCloudFunctions": false,
+    "touchesPayments": false,
+    "touchesAI": false,
+    "touchesLanding": false,
+    "requiresHumanApproval": false
+  },
+  "automationScope": {
+    "factorySandboxOnly": true,
+    "factoryCanGenerate": [
+      "src/carrier/hooks/useOnboardingState.ts",
+      "src/carrier/hooks/__tests__/useOnboardingState.test.ts"
+    ],
+    "factoryCanValidate": ["jest", "tsc"],
+    "claudeCodeMustIntegrate": true,
+    "claudeCodeOnly": [],
+    "humanApprovalRequired": []
+  },
+  "files": {
+    "create": [
+      {
+        "filePath": "src/carrier/hooks/useOnboardingState.ts",
+        "project": "src",
+        "description": "Realtime onSnapshot hook for vendors/{vendorID}.onboarding field. Returns { onboarding, loading, error } and markStepComplete(stepKey) helper that writes back with updateDoc.",
+        "buildingBlocks": ["hook-service-pattern", "realtime-firestore-listener", "loading-empty-error-state", "project-structure-imports"],
+        "risk": "medium"
+      },
+      {
+        "filePath": "src/carrier/hooks/__tests__/useOnboardingState.test.ts",
+        "project": "src",
+        "description": "Jest tests: loading:true initially, onboarding returned when field exists, null when field missing, unsubscribe on unmount, markStepComplete calls updateDoc with correct dot-notation path.",
+        "buildingBlocks": ["testing-guide"],
+        "risk": "low"
+      }
+    ],
+    "modify": [],
+    "doNotTouch": [
+      "functions/",
+      "src/navigation/"
+    ]
+  },
+  "hookSpec": {
+    "hookName": "useOnboardingState",
+    "returnShape": "{ onboarding: { isComplete: boolean, steps: Record<string, boolean>, completedAt: any } | null, loading: boolean, error: Error | null, markStepComplete: (stepKey: string) => Promise<void> }",
+    "firestorePaths": ["vendors/{vendorID}"],
+    "listenerType": "onSnapshot",
+    "vendorIDRequired": false,
+    "asyncLookupRequired": false,
+    "cleanupRequired": true
+  },
+  "dataModelsTouched": [
+    {
+      "collection": "vendors",
+      "operations": ["listen", "write"],
+      "notes": "Reads vendors/{vendorID}.onboarding via onSnapshot. markStepComplete writes with updateDoc using dot-notation: 'onboarding.steps.{stepKey}': true. Schema: { isComplete: boolean, steps: { dispatch, drivers, trucks, trailers, locations, contact }, completedAt: Timestamp|null }"
+    }
+  ],
+  "projectAreasTouched": [
+    "src/carrier/hooks/",
+    "src/carrier/hooks/__tests__/"
+  ],
+  "runtimeDependencies": {
+    "npmPackages": [],
+    "firebaseServices": ["firestore"],
+    "externalAPIs": [],
+    "environmentVariables": []
+  },
+  "moduleSystem": "TypeScript",
+  "testingStrategy": {
+    "testFirst": true,
+    "testType": "firestore-hook",
+    "requiredMocks": [
+      "firebase/firestore (doc, onSnapshot, updateDoc)",
+      "src/core/firebase/config (db)"
+    ],
+    "avoid": [
+      "Real Firestore calls in tests",
+      "import from @testing-library/react-hooks (deprecated)"
+    ],
+    "commands": [
+      "npx jest src/carrier/hooks/__tests__/useOnboardingState.test.ts --watchAll=false --forceExit"
+    ]
+  },
+  "validationStrategy": {
+    "sandboxCommands": [
+      "npx jest src/carrier/hooks/__tests__/useOnboardingState.test.ts --watchAll=false --forceExit",
+      "npx tsc --noEmit"
+    ],
+    "expectedPassingSignals": [
+      "All 5 test cases pass",
+      "No TypeScript errors"
+    ],
+    "failureEscalationRules": [
+      "If updateDoc mock fails: reload realtime-firestore-listener building block and verify mock ordering",
+      "If onSnapshot mock fails: reload testing-guide building block and regenerate test"
+    ]
+  },
+  "factoryExecutionPlan": {
+    "steps": [
+      "Generate useOnboardingState.ts following realtime-firestore-listener + hook-service-pattern",
+      "Generate useOnboardingState.test.ts with 5 test cases",
+      "Validate: jest run + tsc --noEmit",
+      "Produce handoff package for Claude Code integration"
+    ],
+    "maxRetries": 2,
+    "handoffRequired": true,
+    "handoffPackage": {
+      "includeGeneratedFiles": true,
+      "includeTestResults": true,
+      "includeValidationOutput": true,
+      "includeRiskNotes": true,
+      "includeClaudeCodeIntegrationSteps": true
+    }
+  },
+  "claudeCodeIntegrationPlan": {
+    "required": true,
+    "reason": "Factory output is an integration candidate only — Claude Code copies files into production repo and validates.",
+    "steps": [
+      "Copy src/carrier/hooks/useOnboardingState.ts into the repo",
+      "Copy src/carrier/hooks/__tests__/useOnboardingState.test.ts into the repo",
+      "Run: npx jest src/carrier/hooks/__tests__/useOnboardingState.test.ts --watchAll=false --forceExit",
+      "Run: npx tsc --noEmit"
+    ],
+    "runtimeValidation": [],
+    "simulatorValidation": [],
+    "finalCommitChecklist": [
+      "useOnboardingState.ts added to src/carrier/hooks/",
+      "useOnboardingState.test.ts added to src/carrier/hooks/__tests__/",
+      "All jest tests pass",
+      "No TypeScript errors"
+    ]
+  },
+  "rollbackPlan": {
+    "required": false,
+    "steps": [
+      "Remove src/carrier/hooks/useOnboardingState.ts",
+      "Remove src/carrier/hooks/__tests__/useOnboardingState.test.ts"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Hook subscribes to vendors/{vendorID} via onSnapshot",
+    "Returns { onboarding, loading, error } — onboarding is null when field is absent",
+    "loading is true on initial render, false after first snapshot",
+    "markStepComplete(stepKey) calls updateDoc with dot-notation path 'onboarding.steps.{stepKey}': true",
+    "Unsubscribe is called on unmount",
+    "All 5 jest test cases pass"
+  ],
+  "openQuestions": []
+}

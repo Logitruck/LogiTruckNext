@@ -1,0 +1,200 @@
+{
+  "featureName": "WizardStepLocations",
+  "featureArchetype": "mobile-screen-feature",
+  "summary": "Carrier admin wizard step for registering service locations (sedes). Displays existing locations from useVendorLocations, opens a create modal using useCreateLocation, and reports step validity (>= 1 location) to the parent CompanySetupScreen. Follows the SetupStepResources + CreateVehicleModal pattern.",
+  "businessIntent": {
+    "problem": "Without registered service locations the distribution trigger cannot match freight requests to this carrier. The wizard guides the admin to register at least one geographic coverage zone.",
+    "affectedRoles": ["carrier"],
+    "expectedOutcome": "Screen renders existing locations list, allows adding new sedes via a modal, and calls onValidationChange(true) when >= 1 location exists.",
+    "operationalCriticality": "high"
+  },
+  "selectedBuildingBlocks": [
+    {
+      "name": "screen-hook-separation",
+      "reason": "Screen only renders — all data comes from useVendorLocations and useCreateLocation hooks",
+      "required": true
+    },
+    {
+      "name": "loading-empty-error-state",
+      "reason": "Empty state when no locations yet; loading state while listener initializes",
+      "required": true
+    }
+  ],
+  "resolvedBuildingBlocks": [
+    "screen-hook-separation",
+    "hook-service-pattern",
+    "loading-empty-error-state",
+    "testing-guide",
+    "project-structure-imports"
+  ],
+  "repoContext": {
+    "projectsAffected": ["src"],
+    "relevantModules": [
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/steps/SetupStepResources.tsx",
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/modals/vehicleModal/CreateVehicleModal/CreateVehicleModal.tsx"
+    ],
+    "referenceFiles": [
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/steps/SetupStepResources.tsx",
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/modals/vehicleModal/CreateVehicleModal/CreateVehicleModal.tsx"
+    ],
+    "existingPatternsToFollow": [
+      "sharedProps pattern from parent: { data, setData, onValidationChange }",
+      "isModalVisible / setIsModalVisible local state for create modal",
+      "Call onValidationChange(locations.length > 0) whenever locations list updates",
+      "useTheme() and useTranslations() for all theme values and strings — never hardcode",
+      "useSpacing() for all margin/padding values — never hardcode numbers",
+      "FlatList or ScrollView for existing items list",
+      "Add button triggers setIsModalVisible(true)"
+    ],
+    "knownAntiPatternsToAvoid": [
+      "No direct Firestore calls in screen — use useVendorLocations and useCreateLocation hooks",
+      "No hardcoded colors, strings, or spacing values",
+      "No business logic in screen — only presentation and modal state"
+    ]
+  },
+  "architectureImpact": {
+    "riskLevel": "medium",
+    "nativeRisk": false,
+    "touchesFirebase": false,
+    "touchesNavigation": false,
+    "touchesCloudFunctions": false,
+    "touchesPayments": false,
+    "touchesAI": false,
+    "touchesLanding": false,
+    "requiresHumanApproval": false
+  },
+  "automationScope": {
+    "factorySandboxOnly": true,
+    "factoryCanGenerate": [
+      "src/carrier/screens/CompanySetup/steps/WizardStepLocations/WizardStepLocations.tsx",
+      "src/carrier/screens/CompanySetup/steps/WizardStepLocations/styles.ts"
+    ],
+    "factoryCanValidate": ["tsc"],
+    "claudeCodeMustIntegrate": true,
+    "claudeCodeOnly": [
+      "Register WizardStepLocations in CompanySetupScreen SETUP_TABS array"
+    ],
+    "humanApprovalRequired": []
+  },
+  "files": {
+    "create": [
+      {
+        "filePath": "src/carrier/screens/CompanySetup/steps/WizardStepLocations/WizardStepLocations.tsx",
+        "project": "src",
+        "description": "Wizard step screen: lists existing locations from useVendorLocations, opens a create modal via useCreateLocation, calls onValidationChange when >= 1 location exists.",
+        "buildingBlocks": ["screen-hook-separation", "loading-empty-error-state", "project-structure-imports"],
+        "risk": "medium"
+      },
+      {
+        "filePath": "src/carrier/screens/CompanySetup/steps/WizardStepLocations/styles.ts",
+        "project": "src",
+        "description": "Dynamic styles for WizardStepLocations using theme and appearance.",
+        "buildingBlocks": ["project-structure-imports"],
+        "risk": "low"
+      }
+    ],
+    "modify": [],
+    "doNotTouch": [
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/",
+      "functions/",
+      "src/navigation/"
+    ]
+  },
+  "screenSpec": {
+    "screenName": "WizardStepLocations",
+    "role": "carrier",
+    "pattern": "folder",
+    "navigationParams": [],
+    "usesHooks": ["useVendorLocations", "useCreateLocation"]
+  },
+  "dataModelsTouched": [
+    {
+      "collection": "vendor_locations",
+      "subcollection": "locations",
+      "operations": ["read"],
+      "notes": "Read via useVendorLocations hook. Write via useCreateLocation hook. Screen never calls Firestore directly."
+    }
+  ],
+  "projectAreasTouched": [
+    "src/carrier/screens/CompanySetup/steps/WizardStepLocations/"
+  ],
+  "runtimeDependencies": {
+    "npmPackages": [],
+    "firebaseServices": [],
+    "externalAPIs": [],
+    "environmentVariables": []
+  },
+  "moduleSystem": "TypeScript",
+  "testingStrategy": {
+    "testFirst": false,
+    "testType": "build-only",
+    "requiredMocks": [],
+    "avoid": [],
+    "commands": ["npx tsc --noEmit"]
+  },
+  "validationStrategy": {
+    "sandboxCommands": ["npx tsc --noEmit"],
+    "expectedPassingSignals": ["No TypeScript errors"],
+    "failureEscalationRules": [
+      "If hook imports fail: verify useVendorLocations and useCreateLocation are in src/carrier/hooks/",
+      "If theme imports fail: reload project-structure-imports building block"
+    ]
+  },
+  "factoryExecutionPlan": {
+    "steps": [
+      "Generate WizardStepLocations.tsx following SetupStepResources + CreateVehicleModal reference patterns",
+      "Generate styles.ts following existing screen style patterns",
+      "Validate: tsc --noEmit",
+      "Produce handoff package for Claude Code integration"
+    ],
+    "maxRetries": 2,
+    "handoffRequired": true,
+    "handoffPackage": {
+      "includeGeneratedFiles": true,
+      "includeTestResults": false,
+      "includeValidationOutput": true,
+      "includeRiskNotes": true,
+      "includeClaudeCodeIntegrationSteps": true
+    }
+  },
+  "claudeCodeIntegrationPlan": {
+    "required": true,
+    "reason": "Screen must be registered in CompanySetupScreen SETUP_TABS — Claude Code direct after factory generates the file.",
+    "steps": [
+      "Copy WizardStepLocations/ folder into src/carrier/screens/CompanySetup/steps/",
+      "Register WizardStepLocations in CompanySetupScreen SETUP_TABS array",
+      "Run: npx tsc --noEmit",
+      "Verify in simulator: locations list renders, add modal opens, onValidationChange fires"
+    ],
+    "runtimeValidation": [],
+    "simulatorValidation": [
+      "Open Company Setup wizard — navigate to Locations tab",
+      "Add a location — verify it appears in the list",
+      "Verify step completion indicator updates"
+    ],
+    "finalCommitChecklist": [
+      "WizardStepLocations.tsx added",
+      "styles.ts added",
+      "Registered in CompanySetupScreen SETUP_TABS",
+      "No TypeScript errors",
+      "Simulator validation passed"
+    ]
+  },
+  "rollbackPlan": {
+    "required": false,
+    "steps": [
+      "Remove src/carrier/screens/CompanySetup/steps/WizardStepLocations/",
+      "Remove WizardStepLocations entry from CompanySetupScreen SETUP_TABS"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Displays list of existing locations from useVendorLocations",
+    "Shows empty state when no locations exist yet",
+    "Add button opens create modal with name/address/lat/lng/maxDistanceService fields",
+    "On successful create: list refreshes via realtime listener, modal closes",
+    "onValidationChange(true) called when >= 1 location exists",
+    "No hardcoded colors, strings, or spacing",
+    "No TypeScript errors"
+  ],
+  "openQuestions": []
+}
