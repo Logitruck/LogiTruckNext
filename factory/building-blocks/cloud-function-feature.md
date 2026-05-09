@@ -8,6 +8,13 @@ the LogiTruck production codebase. Every generated Cloud Function must follow th
 
 ---
 
+## 0. OVERRIDE — These rules supersede callable-function-pattern.md
+
+This building block overrides the `callable-function-pattern` canonical example where they conflict.
+Specifically: the Firebase Admin import style and the import depth for `functions/core/` modules.
+
+---
+
 ## 1. Firebase Admin SDK Imports — Modular API (REQUIRED)
 
 Always use the modular Firebase Admin SDK. Never use `require('firebase-admin')` directly.
@@ -31,6 +38,41 @@ const db = admin.firestore();
 
 `FieldValue` is imported directly from `firebase-admin/firestore` — not accessed as
 `admin.firestore.FieldValue`. Use `FieldValue.serverTimestamp()` directly.
+
+---
+
+## 1b. Import Depth — functions/core/ modules (CRITICAL)
+
+The `functions/` directory structure has two different depths that require different relative paths
+to reach `functions/core/`. Using the wrong depth causes a module-not-found error.
+
+```
+functions/
+  app/
+    carrier/
+      createCarrier.js        ← FUNCTION FILE (depth: functions/app/carrier/)
+      __tests__/
+        createCarrier.test.js ← TEST FILE (depth: functions/app/carrier/__tests__/)
+  core/
+    user.js                   ← TARGET
+```
+
+**From the FUNCTION FILE** (`functions/app/carrier/createCarrier.js`):
+```js
+// 2 levels up: carrier/ → app/ → functions/ → core/user
+const { getUserByEmailSafe } = require('../../core/user');  // CORRECT
+const { getUserByEmailSafe } = require('../../../core/user'); // WRONG — goes to repo root
+```
+
+**From the TEST FILE** (`functions/app/carrier/__tests__/createCarrier.test.js`):
+```js
+// 3 levels up: __tests__/ → carrier/ → app/ → functions/ → core/user
+jest.mock('../../../core/user', () => ({...}));  // CORRECT
+jest.mock('../../core/user', () => ({...}));     // WRONG — goes to functions/app/core/user
+```
+
+Both `../../core/user` (function) and `../../../core/user` (test) resolve to the same absolute
+path `functions/core/user`. They look different but are correct at each depth.
 
 ---
 
