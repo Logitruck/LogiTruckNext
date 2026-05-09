@@ -120,6 +120,90 @@ expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
 
 ---
 
+## CRITICAL: Three required patterns for Firestore hook tests in React Native
+
+These three mistakes cause 100% test failure. Apply all three to every generated hook test.
+
+### 1. Named import — never default import
+
+Hooks in this repo use named exports (`export function useX`), not `export default`.
+
+```ts
+// CORRECT
+import { useVendorLocations } from '../useVendorLocations';
+
+// WRONG — resolves .default to undefined → TypeError: (0 , _hook.default) is not a function
+import useVendorLocations from '../useVendorLocations';
+```
+
+### 2. firebase/firestore — always use factory mock form
+
+`firebase/firestore` is ESM. Jest cannot auto-mock ESM — all imports become undefined.
+
+```ts
+// CORRECT — list every function the hook imports
+jest.mock('firebase/firestore', () => ({
+  collection: jest.fn(),
+  onSnapshot: jest.fn(),
+}));
+
+// WRONG — auto-mock silently makes everything undefined
+jest.mock('firebase/firestore');
+```
+
+### 3. useCurrentUser — stable object reference required
+
+`useCurrentUser()` result is a `useEffect` dependency. A new object on every call triggers infinite re-renders → "Maximum update depth exceeded".
+
+```ts
+// CORRECT — stableReturn is created once, same reference every call
+jest.mock('../../../core/onboarding/hooks/useAuth', () => {
+  const stableReturn = { user: { uid: 'test-user' } };
+  return { useCurrentUser: jest.fn(() => stableReturn) };
+});
+
+// WRONG — new object each render → infinite useEffect loop
+jest.mock('../../../core/onboarding/hooks/useAuth', () => ({
+  useCurrentUser: jest.fn(() => ({ user: { uid: 'test-user' } })),
+}));
+```
+
+### Import depth from `__tests__/` subfolder
+
+Test files at `src/<role>/hooks/__tests__/` are **one level deeper** than the hook file.
+
+```ts
+// CORRECT — from src/carrier/hooks/__tests__/
+import { db } from '../../../core/firebase/config';   // 3 levels up
+
+// WRONG — only goes up to src/carrier/hooks/, misses the __tests__/ level
+import { db } from '../../core/firebase/config';      // 2 levels up
+```
+
+### Complete correct mock block for a Firestore realtime hook test
+
+```ts
+import { renderHook, waitFor, act } from '@testing-library/react-native';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { useVendorLocations } from '../useVendorLocations'; // named import
+
+const mockUnsubscribe = jest.fn();
+const mockOnSnapshot = onSnapshot as jest.Mock;
+const mockCollection = collection as jest.Mock;
+
+jest.mock('firebase/firestore', () => ({          // factory form — ESM
+  collection: jest.fn(),
+  onSnapshot: jest.fn(),
+}));
+jest.mock('../../../core/firebase/config', () => ({ db: {} }));  // 3 levels up
+jest.mock('../../../core/onboarding/hooks/useAuth', () => {      // stable ref
+  const stableReturn = { user: { uid: 'test-user' } };
+  return { useCurrentUser: jest.fn(() => stableReturn) };
+});
+```
+
+---
+
 # React Native Component Testing
 
 Component tests should verify:
