@@ -288,6 +288,125 @@ WRONG (FieldValue inside return value — does NOT work):
 firestore: () => ({ FieldValue: { serverTimestamp: () => 'TIMESTAMP' }, ... })
 ```
 
+## Modular Firebase Admin SDK mocking (firebase-admin/firestore, firebase-admin/auth)
+
+When the Cloud Function under test uses the **modular Firebase Admin SDK**:
+```js
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
+```
+
+Mocking `firebase-admin` alone does NOT intercept these calls — `firebase-admin/firestore`
+and `firebase-admin/auth` are **separate module paths** that need their own `jest.mock()`.
+
+**DO NOT mock `firebase-admin` at all when the function uses modular imports.**
+Mock the modular paths directly instead:
+
+```js
+const mockServerTimestamp = jest.fn(() => 'mock-server-timestamp');
+
+const mockDocSet = jest.fn().mockResolvedValue(undefined);
+const mockDb = {
+  collection: jest.fn().mockImplementation((name) => ({
+    doc: jest.fn().mockReturnValue({
+      set: mockDocSet,
+      get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
+      collection: jest.fn().mockReturnValue({
+        doc: jest.fn().mockReturnValue({ set: mockDocSet }),
+      }),
+    }),
+  })),
+};
+
+const mockAuthCreateUser = jest.fn();
+const mockAuthInstance = { createUser: mockAuthCreateUser };
+
+jest.mock('firebase-admin/firestore', () => ({
+  getFirestore: jest.fn(() => mockDb),
+  FieldValue: { serverTimestamp: mockServerTimestamp },
+}));
+
+jest.mock('firebase-admin/auth', () => ({
+  getAuth: jest.fn(() => mockAuthInstance),
+}));
+```
+
+This replaces the legacy `jest.mock('firebase-admin', ...)` block entirely for modular-SDK functions.
+
+**Complete ordering for modular SDK Cloud Function tests:**
+
+```js
+// ── STEP 1: all jest.mock() calls ─────────────────────────────────────────
+jest.mock('firebase-functions/v2/https', () => ({
+  onCall: (handler) => handler,
+  HttpsError: class HttpsError extends Error {
+    constructor(code, message) { super(message); this.code = code; }
+  },
+}));
+
+const mockServerTimestamp = jest.fn(() => 'mock-server-timestamp');
+const mockDocSet = jest.fn().mockResolvedValue(undefined);
+const mockDb = { collection: jest.fn().mockImplementation((name) => ({
+  doc: jest.fn().mockReturnValue({
+    set: mockDocSet,
+    get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
+    collection: jest.fn().mockReturnValue({
+      doc: jest.fn().mockReturnValue({ set: mockDocSet }),
+    }),
+  }),
+})) };
+const mockAuthCreateUser = jest.fn();
+const mockAuthInstance = { createUser: mockAuthCreateUser };
+
+jest.mock('firebase-admin/firestore', () => ({
+  getFirestore: jest.fn(() => mockDb),
+  FieldValue: { serverTimestamp: mockServerTimestamp },
+}));
+jest.mock('firebase-admin/auth', () => ({
+  getAuth: jest.fn(() => mockAuthInstance),
+}));
+jest.mock('uuid', () => ({ v4: jest.fn().mockReturnValue('test-vendor-id-123') }));
+jest.mock('../../../core/user', () => ({ getUserByEmailSafe: jest.fn() }));
+
+// ── STEP 2: all require() calls (only after all mocks registered) ──────────
+const { HttpsError } = require('firebase-functions/v2/https');
+const { createCarrier } = require('../createCarrier');
+```
+
+**Decision rule:** look at the `require()` calls in the function file itself:
+- Function uses `require('firebase-admin')` → use legacy `jest.mock('firebase-admin', ...)` pattern
+- Function uses `require('firebase-admin/firestore')` / `require('firebase-admin/auth')` → use modular mock pattern above
+
+**CRITICAL: Do NOT reassign mockDb or mockAuthInstance in beforeEach.**
+
+When the function has module-level calls like `const db = getFirestore()` or `const auth = getAuth()`,
+those execute once at `require('../createCarrier')` time. The `db` and `auth` variables in the function
+are permanently bound to `mockDb` and `mockAuthInstance` from that moment.
+
+If `beforeEach` creates a new object and tries to replace them, the function never sees it:
+```js
+// WRONG — function already captured the original mockDb at require time
+beforeEach(() => {
+  mockDb = { collection: jest.fn()... };          // ← creates new object, function ignores it
+  admin.firestore.mockReturnValue(mockDb);         // ← doesn't exist in modular SDK
+});
+```
+
+Correct `beforeEach` for modular SDK functions:
+```js
+beforeEach(() => {
+  jest.clearAllMocks();                            // ← resets call counts on existing mocks
+  // Re-wire specific mock behaviors if needed:
+  mockAuthCreateUser.mockResolvedValue({ uid: 'default-uid' });
+});
+```
+
+The module-level `mockDb`, `mockAuthInstance`, `mockDocSet` etc. are reused across tests.
+`jest.clearAllMocks()` resets their call counts. Specific tests override behaviors with
+`.mockResolvedValueOnce()` or `.mockReturnValueOnce()` per test.
+
+---
+
 ## Always use mock-prefixed Jest methods
 
 Always use:
