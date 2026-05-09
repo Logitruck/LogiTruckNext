@@ -83,6 +83,7 @@ const useCarrierResources = (vendorID?: string) => {
   const [trailers, setTrailers] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [dispatchers, setDispatchers] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<any>(null);
 
@@ -92,6 +93,7 @@ const useCarrierResources = (vendorID?: string) => {
       setTrailers([]);
       setDrivers([]);
       setDispatchers([]);
+      setContacts([]);
       setLoading(false);
       return;
     }
@@ -133,13 +135,20 @@ const useCarrierResources = (vendorID?: string) => {
         where('rolesArray', 'array-contains', 'dispatch'),
       );
 
-      const [driversSnap, dispatchersSnap] = await Promise.all([
+      const contactsQuery = query(
+        usersRef,
+        where('rolesArray', 'array-contains', 'notification_contact'),
+      );
+
+      const [driversSnap, dispatchersSnap, contactsSnap] = await Promise.all([
         getDocs(driversQuery),
         getDocs(dispatchersQuery),
+        getDocs(contactsQuery),
       ]);
 
       const driverList: any[] = [];
       const dispatchList: any[] = [];
+      const contactList: any[] = [];
 
       driversSnap.forEach((userDoc) => {
         driverList.push(mapUser(userDoc));
@@ -149,10 +158,15 @@ const useCarrierResources = (vendorID?: string) => {
         dispatchList.push(mapUser(userDoc));
       });
 
+      contactsSnap.forEach((userDoc) => {
+        contactList.push(mapUser(userDoc));
+      });
+
       setTrucks(sortVehicles(truckList));
       setTrailers(sortVehicles(trailerList));
       setDrivers(sortUsers(driverList));
       setDispatchers(sortUsers(dispatchList));
+      setContacts(sortUsers(contactList));
       setError(null);
     } catch (err) {
       console.error('🔥 Error fetching carrier resources:', err);
@@ -171,6 +185,7 @@ const useCarrierResources = (vendorID?: string) => {
     trailers,
     drivers,
     dispatchers,
+    contacts,
     loading,
     error,
     refresh: fetchResources,
