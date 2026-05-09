@@ -84,8 +84,11 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 Never use:
 
 ```ts
-@testing-library/react-hooks
+@testing-library/react-hooks   // deprecated, React 16/17 only
+@testing-library/react         // web library, not available in this RN project
 ```
+
+This project is React Native — only `@testing-library/react-native` is installed.
 
 ---
 
@@ -179,6 +182,32 @@ import { db } from '../../../core/firebase/config';   // 3 levels up
 // WRONG — only goes up to src/carrier/hooks/, misses the __tests__/ level
 import { db } from '../../core/firebase/config';      // 2 levels up
 ```
+
+### 4. Captured snapshot callbacks must be wrapped in act()
+
+When a test captures the onSnapshot callback to invoke it manually (e.g. to test markStepComplete after data loads), wrap the callback invocation in `act()` to avoid "not wrapped in act" warnings:
+
+```ts
+let snapshotCallback: any;
+mockOnSnapshot.mockImplementation((_ref: any, callback: any) => {
+  snapshotCallback = callback;
+  return jest.fn();
+});
+
+const { result } = renderHook(() => useOnboardingState('test-vendor'));
+
+// CORRECT — wrap manual callback invocation in act
+await act(async () => {
+  snapshotCallback({ data: () => ({ onboarding: mockData }) });
+});
+
+// WRONG — triggers "not wrapped in act" console.error
+snapshotCallback({ data: () => ({ onboarding: mockData }) });
+```
+
+For simpler tests where the callback fires synchronously during renderHook (like loading + data tests), prefer the inline mockImplementation pattern used in `useVendorLocations.test.ts` — it avoids act entirely since the callback runs inside renderHook's own act boundary.
+
+---
 
 ### Complete correct mock block for a Firestore realtime hook test
 
