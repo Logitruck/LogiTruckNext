@@ -41,6 +41,61 @@ Do not use plain `npm install` inside factory sandbox.
 ./node_modules/.bin/tsc --noEmit
 ```
 
+
+## CRITICAL: Validation Scope
+
+Factory validation must be feature-scoped.
+
+The factory must never run the entire repository test suite during a feature generation run.
+
+Correct:
+
+```bash
+./node_modules/.bin/jest path/to/generated.test.tsx --watchAll=false --forceExit
+./node_modules/.bin/tsc --noEmit
+```
+
+Wrong:
+
+```bash
+./node_modules/.bin/jest --watchAll=false --forceExit
+npm test
+```
+
+Reason:
+The repository may contain unrelated historical tests, native environment tests, or known failing suites. These must not fail a factory run for an unrelated feature.
+
+Validation ownership:
+- Factory validates generated files and generated tests.
+- Claude Code validates the full repository after integrating into the real repo.
+
+## Mobile Screen Feature Validation
+
+For `mobile-screen-feature`:
+
+- Run `tsc --noEmit` for TypeScript compatibility.
+- Run Jest only for generated screen tests.
+- Do not run all tests.
+- Do not run `functions/` tests.
+- Do not run unrelated hook tests.
+- If no tests were generated, use TypeScript validation only.
+- If generated tests exist, pass the generated test file paths explicitly to Jest.
+
+Example:
+
+```bash
+./node_modules/.bin/tsc --noEmit
+./node_modules/.bin/jest src/carrier/screens/CompanySetup/steps/WizardStepLocations/__tests__/WizardStepLocations.test.tsx --watchAll=false --forceExit
+```
+
+Never use bare Jest for mobile screen validation:
+
+```bash
+./node_modules/.bin/jest --watchAll=false --forceExit
+```
+
+That command runs unrelated suites and makes factory validation non-deterministic.
+
 ---
 
 # Core Rules
@@ -84,11 +139,8 @@ import { renderHook, waitFor, act } from '@testing-library/react-native';
 Never use:
 
 ```ts
-@testing-library/react-hooks   // deprecated, React 16/17 only
-@testing-library/react         // web library, not available in this RN project
+@testing-library/react-hooks
 ```
-
-This project is React Native — only `@testing-library/react-native` is installed.
 
 ---
 
@@ -123,117 +175,31 @@ expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
 
 ---
 
-## CRITICAL: Three required patterns for Firestore hook tests in React Native
-
-These three mistakes cause 100% test failure. Apply all three to every generated hook test.
-
-### 1. Named import — never default import
-
-Hooks in this repo use named exports (`export function useX`), not `export default`.
-
-```ts
-// CORRECT
-import { useVendorLocations } from '../useVendorLocations';
-
-// WRONG — resolves .default to undefined → TypeError: (0 , _hook.default) is not a function
-import useVendorLocations from '../useVendorLocations';
-```
-
-### 2. firebase/firestore — always use factory mock form
-
-`firebase/firestore` is ESM. Jest cannot auto-mock ESM — all imports become undefined.
-
-```ts
-// CORRECT — list every function the hook imports
-jest.mock('firebase/firestore', () => ({
-  collection: jest.fn(),
-  onSnapshot: jest.fn(),
-}));
-
-// WRONG — auto-mock silently makes everything undefined
-jest.mock('firebase/firestore');
-```
-
-### 3. useCurrentUser — stable object reference required
-
-`useCurrentUser()` result is a `useEffect` dependency. A new object on every call triggers infinite re-renders → "Maximum update depth exceeded".
-
-```ts
-// CORRECT — stableReturn is created once, same reference every call
-jest.mock('../../../core/onboarding/hooks/useAuth', () => {
-  const stableReturn = { user: { uid: 'test-user' } };
-  return { useCurrentUser: jest.fn(() => stableReturn) };
-});
-
-// WRONG — new object each render → infinite useEffect loop
-jest.mock('../../../core/onboarding/hooks/useAuth', () => ({
-  useCurrentUser: jest.fn(() => ({ user: { uid: 'test-user' } })),
-}));
-```
-
-### Import depth from `__tests__/` subfolder
-
-Test files at `src/<role>/hooks/__tests__/` are **one level deeper** than the hook file.
-
-```ts
-// CORRECT — from src/carrier/hooks/__tests__/
-import { db } from '../../../core/firebase/config';   // 3 levels up
-
-// WRONG — only goes up to src/carrier/hooks/, misses the __tests__/ level
-import { db } from '../../core/firebase/config';      // 2 levels up
-```
-
-### 4. Captured snapshot callbacks must be wrapped in act()
-
-When a test captures the onSnapshot callback to invoke it manually (e.g. to test markStepComplete after data loads), wrap the callback invocation in `act()` to avoid "not wrapped in act" warnings:
-
-```ts
-let snapshotCallback: any;
-mockOnSnapshot.mockImplementation((_ref: any, callback: any) => {
-  snapshotCallback = callback;
-  return jest.fn();
-});
-
-const { result } = renderHook(() => useOnboardingState('test-vendor'));
-
-// CORRECT — wrap manual callback invocation in act
-await act(async () => {
-  snapshotCallback({ data: () => ({ onboarding: mockData }) });
-});
-
-// WRONG — triggers "not wrapped in act" console.error
-snapshotCallback({ data: () => ({ onboarding: mockData }) });
-```
-
-For simpler tests where the callback fires synchronously during renderHook (like loading + data tests), prefer the inline mockImplementation pattern used in `useVendorLocations.test.ts` — it avoids act entirely since the callback runs inside renderHook's own act boundary.
-
----
-
-### Complete correct mock block for a Firestore realtime hook test
-
-```ts
-import { renderHook, waitFor, act } from '@testing-library/react-native';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { useVendorLocations } from '../useVendorLocations'; // named import
-
-const mockUnsubscribe = jest.fn();
-const mockOnSnapshot = onSnapshot as jest.Mock;
-const mockCollection = collection as jest.Mock;
-
-jest.mock('firebase/firestore', () => ({          // factory form — ESM
-  collection: jest.fn(),
-  onSnapshot: jest.fn(),
-}));
-jest.mock('../../../core/firebase/config', () => ({ db: {} }));  // 3 levels up
-jest.mock('../../../core/onboarding/hooks/useAuth', () => {      // stable ref
-  const stableReturn = { user: { uid: 'test-user' } };
-  return { useCurrentUser: jest.fn(() => stableReturn) };
-});
-```
-
----
-
 # React Native Component Testing
+
+Component tests should verify:
+
+## Screen Test Rules
+
+Generated screen tests must import exactly what the implementation exports.
+
+If the screen file exports a default component:
+
+```ts
+import WizardStepLocations from '../WizardStepLocations';
+```
+
+If the screen file exports a named component:
+
+```ts
+import { WizardStepLocations } from '../WizardStepLocations';
+```
+
+The factory must not generate tests that assume named exports unless the implementation actually uses named exports.
+
+Generated style tests must only import functions that the style file actually exports. If `styles.ts` exports a default style object, do not test `createStyles`. If `styles.ts` exports `createStyles`, the implementation must export it explicitly.
+
+For mobile screen tests, mock only dependencies used by the generated screen. Do not import or execute unrelated hooks, functions, or screens.
 
 Component tests should verify:
 
@@ -298,289 +264,6 @@ Factory must NOT test real:
 - phone calls
 
 Use mocked API clients.
-
----
-
-# Cloud Function Testing
-
-Cloud Function tests run in a plain Node.js Jest environment (`testEnvironment: 'node'`).
-They use CommonJS (`require`), no Babel transform, no TypeScript.
-
-## CRITICAL: Always mock firebase-functions/v2/https
-
-Do NOT import the real `firebase-functions` package in tests.
-The real package triggers an import chain through `firebase-admin` internals
-(`../utils/error`, etc.) that Jest intercepts incorrectly and breaks the test suite.
-
-Always add this mock at the top of every Cloud Function test file:
-
-```js
-jest.mock('firebase-functions/v2/https', () => ({
-  onCall: (handler) => handler,
-  HttpsError: class HttpsError extends Error {
-    constructor(code, message) {
-      super(message);
-      this.code = code;
-    }
-  },
-}));
-```
-
-Then require `HttpsError` from the mock, not from the real package:
-
-```js
-const { HttpsError } = require('firebase-functions/v2/https');
-```
-
-## Import depth for functions/__tests__
-
-Test files live at `functions/app/<module>/__tests__/`.
-Shared utilities live at `functions/core/` and `functions/utils/`.
-
-The correct relative import depth from `__tests__/` to `functions/core/` is **three levels up**:
-
-```js
-// CORRECT — from functions/app/<module>/__tests__/
-const { getUserByEmailSafe } = require('../../../core/user');
-
-// WRONG — only goes up to functions/app/, not functions/
-const { getUserByEmailSafe } = require('../../core/user');
-```
-
-## Required mocks for Cloud Function tests
-
-Every Cloud Function test must mock:
-
-- `firebase-admin` — provide `auth()` and `firestore()` stubs
-- `firebase-functions/v2/https` — inline HttpsError class (see above)
-- `uuid` — return deterministic ID for assertions
-- Any `functions/core/` dependency used by the function
-
-## firebase-admin mock — FieldValue is a static property
-
-`admin.firestore.FieldValue.serverTimestamp()` is a **static property on the `firestore` function**,
-not on its return value. Use module-level variables so the mocks are reachable in test bodies:
-
-```js
-const mockServerTimestamp = jest.fn(() => 'mock-server-timestamp');
-
-const mockDb = {
-  collection: jest.fn().mockReturnValue({
-    doc: jest.fn().mockReturnValue({
-      set: jest.fn().mockResolvedValue(undefined),
-      collection: jest.fn().mockReturnValue({
-        doc: jest.fn().mockReturnValue({
-          set: jest.fn().mockResolvedValue(undefined),
-        }),
-      }),
-    }),
-  }),
-};
-
-const mockAuth = {
-  createUser: jest.fn().mockResolvedValue({ uid: 'mock-uid' }),
-};
-
-const mockFirestore = jest.fn(() => mockDb);
-mockFirestore.FieldValue = {
-  serverTimestamp: mockServerTimestamp,
-};
-
-jest.mock('firebase-admin', () => ({
-  firestore: mockFirestore,
-  auth: jest.fn(() => mockAuth),
-}));
-```
-
-These variables are defined BEFORE `jest.mock()` in execution order (no Babel hoisting needed),
-so the factory closure captures the correct references. They are also accessible in `beforeEach`
-and test bodies for assertions like `expect(mockServerTimestamp).toHaveBeenCalled()`.
-
-WRONG (FieldValue inside return value — does NOT work):
-```js
-firestore: () => ({ FieldValue: { serverTimestamp: () => 'TIMESTAMP' }, ... })
-```
-
-## Modular Firebase Admin SDK mocking (firebase-admin/firestore, firebase-admin/auth)
-
-When the Cloud Function under test uses the **modular Firebase Admin SDK**:
-```js
-const { getFirestore, FieldValue } = require('firebase-admin/firestore');
-const { getAuth } = require('firebase-admin/auth');
-```
-
-Mocking `firebase-admin` alone does NOT intercept these calls — `firebase-admin/firestore`
-and `firebase-admin/auth` are **separate module paths** that need their own `jest.mock()`.
-
-**DO NOT mock `firebase-admin` at all when the function uses modular imports.**
-Mock the modular paths directly instead:
-
-```js
-const mockServerTimestamp = jest.fn(() => 'mock-server-timestamp');
-
-const mockDocSet = jest.fn().mockResolvedValue(undefined);
-const mockDb = {
-  collection: jest.fn().mockImplementation((name) => ({
-    doc: jest.fn().mockReturnValue({
-      set: mockDocSet,
-      get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
-      collection: jest.fn().mockReturnValue({
-        doc: jest.fn().mockReturnValue({ set: mockDocSet }),
-      }),
-    }),
-  })),
-};
-
-const mockAuthCreateUser = jest.fn();
-const mockAuthInstance = { createUser: mockAuthCreateUser };
-
-jest.mock('firebase-admin/firestore', () => ({
-  getFirestore: jest.fn(() => mockDb),
-  FieldValue: { serverTimestamp: mockServerTimestamp },
-}));
-
-jest.mock('firebase-admin/auth', () => ({
-  getAuth: jest.fn(() => mockAuthInstance),
-}));
-```
-
-This replaces the legacy `jest.mock('firebase-admin', ...)` block entirely for modular-SDK functions.
-
-**Complete ordering for modular SDK Cloud Function tests:**
-
-```js
-// ── STEP 1: all jest.mock() calls ─────────────────────────────────────────
-jest.mock('firebase-functions/v2/https', () => ({
-  onCall: (handler) => handler,
-  HttpsError: class HttpsError extends Error {
-    constructor(code, message) { super(message); this.code = code; }
-  },
-}));
-
-const mockServerTimestamp = jest.fn(() => 'mock-server-timestamp');
-const mockDocSet = jest.fn().mockResolvedValue(undefined);
-const mockDb = { collection: jest.fn().mockImplementation((name) => ({
-  doc: jest.fn().mockReturnValue({
-    set: mockDocSet,
-    get: jest.fn().mockResolvedValue({ exists: true, data: () => ({}) }),
-    collection: jest.fn().mockReturnValue({
-      doc: jest.fn().mockReturnValue({ set: mockDocSet }),
-    }),
-  }),
-})) };
-const mockAuthCreateUser = jest.fn();
-const mockAuthInstance = { createUser: mockAuthCreateUser };
-
-jest.mock('firebase-admin/firestore', () => ({
-  getFirestore: jest.fn(() => mockDb),
-  FieldValue: { serverTimestamp: mockServerTimestamp },
-}));
-jest.mock('firebase-admin/auth', () => ({
-  getAuth: jest.fn(() => mockAuthInstance),
-}));
-jest.mock('uuid', () => ({ v4: jest.fn().mockReturnValue('test-vendor-id-123') }));
-jest.mock('../../../core/user', () => ({ getUserByEmailSafe: jest.fn() }));
-
-// ── STEP 2: all require() calls (only after all mocks registered) ──────────
-const { HttpsError } = require('firebase-functions/v2/https');
-const { createCarrier } = require('../createCarrier');
-```
-
-**Decision rule:** look at the `require()` calls in the function file itself:
-- Function uses `require('firebase-admin')` → use legacy `jest.mock('firebase-admin', ...)` pattern
-- Function uses `require('firebase-admin/firestore')` / `require('firebase-admin/auth')` → use modular mock pattern above
-
-**CRITICAL: Do NOT reassign mockDb or mockAuthInstance in beforeEach.**
-
-When the function has module-level calls like `const db = getFirestore()` or `const auth = getAuth()`,
-those execute once at `require('../createCarrier')` time. The `db` and `auth` variables in the function
-are permanently bound to `mockDb` and `mockAuthInstance` from that moment.
-
-If `beforeEach` creates a new object and tries to replace them, the function never sees it:
-```js
-// WRONG — function already captured the original mockDb at require time
-beforeEach(() => {
-  mockDb = { collection: jest.fn()... };          // ← creates new object, function ignores it
-  admin.firestore.mockReturnValue(mockDb);         // ← doesn't exist in modular SDK
-});
-```
-
-Correct `beforeEach` for modular SDK functions:
-```js
-beforeEach(() => {
-  jest.clearAllMocks();                            // ← resets call counts on existing mocks
-  // Re-wire specific mock behaviors if needed:
-  mockAuthCreateUser.mockResolvedValue({ uid: 'default-uid' });
-});
-```
-
-The module-level `mockDb`, `mockAuthInstance`, `mockDocSet` etc. are reused across tests.
-`jest.clearAllMocks()` resets their call counts. Specific tests override behaviors with
-`.mockResolvedValueOnce()` or `.mockReturnValueOnce()` per test.
-
----
-
-## Always use mock-prefixed Jest methods
-
-Always use:
-- `jest.fn().mockReturnValue(x)` — NOT `.returnValue(x)`
-- `jest.fn().mockResolvedValue(x)` — NOT `.resolvedValue(x)`
-- `jest.fn().mockRejectedValue(e)` — NOT `.rejectedValue(e)`
-
-The non-prefixed versions (`.returnValue`, `.resolvedValue`) do not exist on jest.fn() and will throw `TypeError: jest.fn(...).returnValue is not a function`.
-
-## CRITICAL: require() order — no Babel hoisting in this project
-
-This project uses `transform: {}` (no Babel). **Jest does NOT hoist `jest.mock()` calls.**
-Execution is strictly top-to-bottom.
-
-**Rule: zero `require()` calls before the last `jest.mock()` call.**
-
-If `require('firebase-functions/v2/https')` appears before `jest.mock('firebase-functions/v2/https', ...)`,
-the real package loads, triggers the firebase-admin import chain, and the test suite crashes.
-
-**Correct structure — ALL mocks first, ALL requires after:**
-
-```js
-// ── STEP 1: all jest.mock() calls (no require before this block) ──────────
-jest.mock('firebase-functions/v2/https', () => ({...}));
-
-const mockServerTimestamp = jest.fn(() => 'mock-server-timestamp');
-const mockDb = { collection: jest.fn()... };
-const mockAuth = { createUser: jest.fn()... };
-const mockFirestore = jest.fn(() => mockDb);
-mockFirestore.FieldValue = { serverTimestamp: mockServerTimestamp };
-jest.mock('firebase-admin', () => ({ firestore: mockFirestore, auth: jest.fn(() => mockAuth) }));
-
-jest.mock('uuid', () => ({ v4: jest.fn().mockReturnValue('test-vendor-id-123') }));
-jest.mock('../../../core/user', () => ({ getUserByEmailSafe: jest.fn() }));
-// ── STEP 2: all require() calls (only after all mocks are registered) ─────
-const { HttpsError } = require('firebase-functions/v2/https');
-const { createCarrier } = require('../createCarrier');
-const admin = require('firebase-admin');
-const { getUserByEmailSafe } = require('../../../core/user');
-```
-
-`functions/core/user.js` calls `getFirestore()` at the top level — if it loads before
-`jest.mock('firebase-admin')` is registered, the test crashes with `Firebase Admin not initialized`.
-
----
-
-## Cloud Function jest config
-
-Use a dedicated `jest.functions.config.js` at repo root:
-
-```js
-module.exports = {
-  testEnvironment: 'node',
-  modulePaths: ['<rootDir>'],
-  testMatch: ['**/__tests__/**/*.test.js'],
-  transform: {},
-};
-```
-
-Do NOT add `moduleNameMapper` entries — they intercept node_modules internal
-relative imports and cause false resolution errors.
 
 ---
 

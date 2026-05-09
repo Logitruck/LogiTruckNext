@@ -27,26 +27,6 @@ This archetype is considered MEDIUM to HIGH risk depending on navigation impact,
 
 ---
 
-# Production Integration Rule
-
-Factory execution never directly modifies the real production repository.
-
-The factory works only in:
-- temporary clones
-- isolated branches
-- sandbox workspaces
-- staging repositories
-
-Factory output is considered an integration candidate only.
-
-Claude Code is always responsible for:
-- reviewing generated changes
-- integrating into the real repository
-- validating runtime behavior
-- validating architecture compatibility
-- validating simulator/device behavior when applicable
-- committing final production-safe changes
-
 # Strategic Role
 
 Mobile screens are the operational interface layer of LogiTruck.
@@ -325,17 +305,50 @@ Factory must NOT test:
 - simulator/device GPS behavior
 - production auth
 - native build flows
+- unrelated repository tests
+- existing historical failing suites
 
 Use mocks/adapters.
+
+## Generated Test Scope
+
+For mobile screen generation, tests must be generated and executed only for the files produced by the current factory run.
+
+Rules:
+- Do not run all Jest tests.
+- Do not run `functions/` tests.
+- Do not run unrelated hook tests.
+- Implementation exports and generated test imports must match exactly.
+- Style tests may only import style helpers that the generated `styles.ts` actually exports.
+- If the feature plan specifies `testFirst: false` or `testType: build-only`, prefer TypeScript validation only.
 
 ---
 
 # Validation Commands
 
+For `mobile-screen-feature`, factory validation must be scoped to generated files only.
+
+Do NOT run the full Jest suite.
+
+Use TypeScript validation for project compatibility:
+
 ```bash
-./node_modules/.bin/jest --watchAll=false --forceExit
 ./node_modules/.bin/tsc --noEmit
 ```
+
+If tests were generated, run only the generated test files:
+
+```bash
+./node_modules/.bin/jest <generated-test-file-1> <generated-test-file-2> --watchAll=false --forceExit
+```
+
+Never run unrelated tests from:
+- `functions/`
+- `src/core/`
+- other role hooks
+- existing historical test suites
+
+Factory validates the generated files and generated tests. Claude Code validates the full repository after integrating the handoff into the real repo.
 
 ---
 
@@ -351,52 +364,6 @@ Every mobile screen feature should define:
 - persistence dependencies
 - operational actions
 - escalation/fallback behavior
-
----
-
----
-
-## Default Building Blocks
-
-These building blocks are always loaded for every mobile-screen-feature plan:
-
-| Building Block | Why Required |
-|----------------|-------------|
-| `screen-hook-separation` | Enforces three-layer architecture: screen → hook → client. Screens must never call Firestore directly. |
-| `hook-service-pattern` | Defines how hooks subscribe to Firestore, return loading/error state, and expose mutations. Canonical pattern for all role-specific screens. |
-| `loading-empty-error-state` | All operational screens must handle null (loading), [] (empty), and error states. Three-state render order required. |
-| `testing-guide` | Screen and hook testing uses renderHook + waitFor from @testing-library/react-native. |
-
-## Optional Building Blocks
-
-Include when the feature plan declares the matching need:
-
-| Building Block | When to Include |
-|----------------|----------------|
-| `realtime-firestore-listener` | Screen subscribes to a Firestore collection or document in real time. |
-| `async-lookup-then-subscribe` | Hook requires vendorID/dispatchID lookup before subscribing (dispatch/carrier role hooks). Must use ref+cancelled pattern. |
-| `route-rendering-pattern` | Screen involves React Navigation: new route registration, drawer menu item, or tab addition. |
-
-## Execution Defaults
-
-| Property | Value |
-|----------|-------|
-| `executionLevelDefault` | `L1` — factory + Claude Code review |
-| `riskLevelDefault` | `medium` |
-| `factoryCanAutoRetry` | `true` (TypeScript, test failures) |
-| `requiresClaudeCodeReview` | yes — architecture consistency, lifecycle correctness |
-| `validationCommands` | `jest`, `tsc --noEmit` |
-
-## Escalation Rules
-
-| Condition | Escalation |
-|-----------|-----------|
-| Screen requires realtime Firestore listener | L1 — include `realtime-firestore-listener` |
-| Screen requires async vendorID/dispatchID lookup | L1 — include `async-lookup-then-subscribe` |
-| Screen modifies navigation root or deep links | L2 — Claude Code required |
-| Screen touches auth/session orchestration | L2 — Claude Code required |
-| Screen requires native module or map integration | L2/L3 — use maps-tracking or native-integration archetype |
-| Screen exposes safety-critical operational UI | L3 — human approval |
 
 ---
 
