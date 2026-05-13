@@ -1,0 +1,206 @@
+{
+  "featureName": "WizardStepContact",
+  "featureArchetype": "mobile-screen-feature",
+  "summary": "Carrier admin wizard step for configuring the company notification contact. Displays existing notification_contact users from useCarrierResources.contacts, opens a create modal using useCreateCarrierPersonnel with rolesArray: ['notification_contact'], and reports step validity to CompanySetupScreen. Follows SetupStepPersonnel + CreatePersonnelModal pattern.",
+  "businessIntent": {
+    "problem": "The carrier company needs a designated contact who receives operational notifications. This is a distinct role from dispatch — it may be a manager, owner, or external coordinator.",
+    "affectedRoles": ["carrier"],
+    "expectedOutcome": "Screen renders existing notification contacts, allows adding one via a modal (rolesArray fixed to ['notification_contact']), shows temp password if isNewAuthUser is true, and calls onValidationChange(true) when >= 1 contact exists.",
+    "operationalCriticality": "medium"
+  },
+  "selectedBuildingBlocks": [
+    {
+      "name": "screen-hook-separation",
+      "reason": "Screen only renders — data comes from useCarrierResources hook, write via useCreateCarrierPersonnel",
+      "required": true
+    },
+    {
+      "name": "loading-empty-error-state",
+      "reason": "Empty state when no contact configured; loading while useCarrierResources initializes",
+      "required": true
+    }
+  ],
+  "resolvedBuildingBlocks": [
+    "screen-hook-separation",
+    "hook-service-pattern",
+    "loading-empty-error-state",
+    "testing-guide",
+    "project-structure-imports"
+  ],
+  "repoContext": {
+    "projectsAffected": ["src"],
+    "relevantModules": [
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/steps/SetupStepPersonnel.tsx",
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/modals/CreatePersonnelModal/CreatePersonnelModal.tsx",
+      "src/modules/projects/hooks/carrier/useCreateCarrierPersonnel.ts",
+      "src/modules/projects/hooks/carrier/useCarrierResources.ts"
+    ],
+    "referenceFiles": [
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/steps/SetupStepPersonnel.tsx",
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/modals/CreatePersonnelModal/CreatePersonnelModal.tsx"
+    ],
+    "existingPatternsToFollow": [
+      "sharedProps pattern from parent: { data, setData, onValidationChange }",
+      "useCarrierResources(vendorID).contacts for existing notification_contact list",
+      "useCreateCarrierPersonnel().createPersonnel with rolesArray: ['notification_contact'] fixed — not user-selectable",
+      "If response.isNewAuthUser === true, show Alert with response.tempPassword",
+      "isModalVisible / setIsModalVisible local state for create modal",
+      "Call onValidationChange(contacts.length > 0) when contacts list updates",
+      "useTheme(), useTranslations(), useSpacing() — never hardcode"
+    ],
+    "knownAntiPatternsToAvoid": [
+      "rolesArray must always be ['notification_contact'] — never let the user change the role in this step",
+      "Do not suppress the isNewAuthUser / tempPassword alert — the admin must see the temporary password",
+      "No direct Firestore calls in screen — use hooks only",
+      "No hardcoded colors, strings, or spacing"
+    ]
+  },
+  "architectureImpact": {
+    "riskLevel": "medium",
+    "nativeRisk": false,
+    "touchesFirebase": false,
+    "touchesNavigation": false,
+    "touchesCloudFunctions": false,
+    "touchesPayments": false,
+    "touchesAI": false,
+    "touchesLanding": false,
+    "requiresHumanApproval": false
+  },
+  "automationScope": {
+    "factorySandboxOnly": true,
+    "factoryCanGenerate": [
+      "src/carrier/screens/CompanySetup/steps/WizardStepContact/WizardStepContact.tsx",
+      "src/carrier/screens/CompanySetup/steps/WizardStepContact/styles.ts"
+    ],
+    "factoryCanValidate": ["tsc"],
+    "claudeCodeMustIntegrate": true,
+    "claudeCodeOnly": [
+      "Register WizardStepContact in CompanySetupScreen SETUP_TABS array"
+    ],
+    "humanApprovalRequired": []
+  },
+  "files": {
+    "create": [
+      {
+        "filePath": "src/carrier/screens/CompanySetup/steps/WizardStepContact/WizardStepContact.tsx",
+        "project": "src",
+        "description": "Wizard step screen: lists existing notification_contact users from useCarrierResources.contacts, opens a create modal using useCreateCarrierPersonnel with fixed rolesArray: ['notification_contact'], shows Alert with tempPassword if isNewAuthUser is true.",
+        "buildingBlocks": ["screen-hook-separation", "loading-empty-error-state", "project-structure-imports"],
+        "risk": "medium"
+      },
+      {
+        "filePath": "src/carrier/screens/CompanySetup/steps/WizardStepContact/styles.ts",
+        "project": "src",
+        "description": "Dynamic styles for WizardStepContact using theme and appearance.",
+        "buildingBlocks": ["project-structure-imports"],
+        "risk": "low"
+      }
+    ],
+    "modify": [],
+    "doNotTouch": [
+      "src/modules/projects/hooks/carrier/useCreateCarrierPersonnel.ts",
+      "src/modules/projects/hooks/carrier/useCarrierResources.ts",
+      "src/modules/projects/screens/carrier/CarrierProjectSetupScreen/",
+      "functions/",
+      "src/navigation/"
+    ]
+  },
+  "screenSpec": {
+    "screenName": "WizardStepContact",
+    "role": "carrier",
+    "pattern": "folder",
+    "navigationParams": [],
+    "usesHooks": ["useCarrierResources", "useCreateCarrierPersonnel"]
+  },
+  "dataModelsTouched": [
+    {
+      "collection": "vendor_users",
+      "subcollection": "users",
+      "operations": ["read"],
+      "notes": "Read via useCarrierResources(vendorID).contacts (already filtered by notification_contact role). Write via useCreateCarrierPersonnel which calls createVendorUser Cloud Function."
+    }
+  ],
+  "projectAreasTouched": [
+    "src/carrier/screens/CompanySetup/steps/WizardStepContact/"
+  ],
+  "runtimeDependencies": {
+    "npmPackages": [],
+    "firebaseServices": [],
+    "externalAPIs": [],
+    "environmentVariables": []
+  },
+  "moduleSystem": "TypeScript",
+  "testingStrategy": {
+    "testFirst": false,
+    "testType": "build-only",
+    "requiredMocks": [],
+    "avoid": [],
+    "commands": ["npx tsc --noEmit"]
+  },
+  "validationStrategy": {
+    "sandboxCommands": ["npx tsc --noEmit"],
+    "expectedPassingSignals": ["No TypeScript errors"],
+    "failureEscalationRules": [
+      "If useCarrierResources import fails: verify hook exports contacts field",
+      "If useCreateCarrierPersonnel import fails: verify path src/modules/projects/hooks/carrier/useCreateCarrierPersonnel"
+    ]
+  },
+  "factoryExecutionPlan": {
+    "steps": [
+      "Generate WizardStepContact.tsx following SetupStepPersonnel + CreatePersonnelModal reference patterns",
+      "Generate styles.ts following existing screen style patterns",
+      "Validate: tsc --noEmit",
+      "Produce handoff package for Claude Code integration"
+    ],
+    "maxRetries": 2,
+    "handoffRequired": true,
+    "handoffPackage": {
+      "includeGeneratedFiles": true,
+      "includeTestResults": false,
+      "includeValidationOutput": true,
+      "includeRiskNotes": true,
+      "includeClaudeCodeIntegrationSteps": true
+    }
+  },
+  "claudeCodeIntegrationPlan": {
+    "required": true,
+    "reason": "Screen must be registered in CompanySetupScreen SETUP_TABS and tempPassword alert must be verified.",
+    "steps": [
+      "Copy WizardStepContact/ folder into src/carrier/screens/CompanySetup/steps/",
+      "Register WizardStepContact in CompanySetupScreen SETUP_TABS array",
+      "Run: npx tsc --noEmit",
+      "Verify in simulator: contacts list renders, add modal opens, tempPassword alert shows when isNewAuthUser is true"
+    ],
+    "runtimeValidation": [],
+    "simulatorValidation": [
+      "Open Company Setup wizard — navigate to Contact tab",
+      "Add a notification contact — verify temp password alert appears",
+      "Verify contact appears in the list after creation"
+    ],
+    "finalCommitChecklist": [
+      "WizardStepContact.tsx added",
+      "styles.ts added",
+      "Registered in CompanySetupScreen SETUP_TABS",
+      "No TypeScript errors",
+      "Simulator validation passed"
+    ]
+  },
+  "rollbackPlan": {
+    "required": false,
+    "steps": [
+      "Remove src/carrier/screens/CompanySetup/steps/WizardStepContact/",
+      "Remove WizardStepContact entry from CompanySetupScreen SETUP_TABS"
+    ]
+  },
+  "acceptanceCriteria": [
+    "Displays list of existing notification_contact users from useCarrierResources.contacts",
+    "Shows empty state when no contact configured",
+    "Add button opens create modal with firstName/lastName/email/phoneNumber fields",
+    "rolesArray is always ['notification_contact'] — not shown to or changeable by the user",
+    "If response.isNewAuthUser === true, Alert shows the temporary password",
+    "onValidationChange(true) called when >= 1 contact exists",
+    "No hardcoded colors, strings, or spacing",
+    "No TypeScript errors"
+  ],
+  "openQuestions": []
+}
